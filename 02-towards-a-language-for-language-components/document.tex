@@ -1,0 +1,1959 @@
+\documentclass[runningheads]{llncs}
+
+\title{Towards a Language for Defining Reusable Programming Language Components}
+\subtitle{(Project Paper)}
+
+\usepackage{mathpartir}
+\usepackage{boxedminipage}
+\usepackage{amsmath}
+\usepackage{amssymb}
+%usepackage{stmaryrd}
+\usepackage{semantic}
+\usepackage{xcolor}
+\usepackage{newunicodechar}
+\usepackage[hidelinks]{hyperref}
+\usepackage[capitalise,noabbrev]{cleveref}
+
+\input{unicode.tex}
+
+% Add page numbers
+% \pagestyle{plain}
+
+\bibliographystyle{splncs04}
+
+
+%% ODER: format ==         = "\mathrel{==}"
+%% ODER: format /=         = "\neq "
+%
+%
+\makeatletter
+\@ifundefined{lhs2tex.lhs2tex.sty.read}%
+  {\@namedef{lhs2tex.lhs2tex.sty.read}{}%
+   \newcommand\SkipToFmtEnd{}%
+   \newcommand\EndFmtInput{}%
+   \long\def\SkipToFmtEnd#1\EndFmtInput{}%
+  }\SkipToFmtEnd
+
+\newcommand\ReadOnlyOnce[1]{\@ifundefined{#1}{\@namedef{#1}{}}\SkipToFmtEnd}
+\usepackage{amstext}
+\usepackage{amssymb}
+\usepackage{stmaryrd}
+\DeclareFontFamily{OT1}{cmtex}{}
+\DeclareFontShape{OT1}{cmtex}{m}{n}
+  {<5><6><7><8>cmtex8
+   <9>cmtex9
+   <10><10.95><12><14.4><17.28><20.74><24.88>cmtex10}{}
+\DeclareFontShape{OT1}{cmtex}{m}{it}
+  {<-> ssub * cmtt/m/it}{}
+\newcommand{\texfamily}{\fontfamily{cmtex}\selectfont}
+\DeclareFontShape{OT1}{cmtt}{bx}{n}
+  {<5><6><7><8>cmtt8
+   <9>cmbtt9
+   <10><10.95><12><14.4><17.28><20.74><24.88>cmbtt10}{}
+\DeclareFontShape{OT1}{cmtex}{bx}{n}
+  {<-> ssub * cmtt/bx/n}{}
+\newcommand{\tex}[1]{\text{\texfamily#1}}	% NEU
+
+\newcommand{\Sp}{\hskip.33334em\relax}
+
+
+\newcommand{\Conid}[1]{\mathit{#1}}
+\newcommand{\Varid}[1]{\mathit{#1}}
+\newcommand{\anonymous}{\kern0.06em \vbox{\hrule\@width.5em}}
+\newcommand{\plus}{\mathbin{+\!\!\!+}}
+\newcommand{\bind}{\mathbin{>\!\!\!>\mkern-6.7mu=}}
+\newcommand{\rbind}{\mathbin{=\mkern-6.7mu<\!\!\!<}}% suggested by Neil Mitchell
+\newcommand{\sequ}{\mathbin{>\!\!\!>}}
+\renewcommand{\leq}{\leqslant}
+\renewcommand{\geq}{\geqslant}
+\usepackage{polytable}
+
+%mathindent has to be defined
+\@ifundefined{mathindent}%
+  {\newdimen\mathindent\mathindent\leftmargini}%
+  {}%
+
+\def\resethooks{%
+  \global\let\SaveRestoreHook\empty
+  \global\let\ColumnHook\empty}
+\newcommand*{\savecolumns}[1][default]%
+  {\g@addto@macro\SaveRestoreHook{\savecolumns[#1]}}
+\newcommand*{\restorecolumns}[1][default]%
+  {\g@addto@macro\SaveRestoreHook{\restorecolumns[#1]}}
+\newcommand*{\aligncolumn}[2]%
+  {\g@addto@macro\ColumnHook{\column{#1}{#2}}}
+
+\resethooks
+
+\newcommand{\onelinecommentchars}{\quad-{}- }
+\newcommand{\commentbeginchars}{\enskip\{-}
+\newcommand{\commentendchars}{-\}\enskip}
+
+\newcommand{\visiblecomments}{%
+  \let\onelinecomment=\onelinecommentchars
+  \let\commentbegin=\commentbeginchars
+  \let\commentend=\commentendchars}
+
+\newcommand{\invisiblecomments}{%
+  \let\onelinecomment=\empty
+  \let\commentbegin=\empty
+  \let\commentend=\empty}
+
+\visiblecomments
+
+\newlength{\blanklineskip}
+\setlength{\blanklineskip}{0.66084ex}
+
+\newcommand{\hsindent}[1]{\quad}% default is fixed indentation
+\let\hspre\empty
+\let\hspost\empty
+\newcommand{\NB}{\textbf{NB}}
+\newcommand{\Todo}[1]{$\langle$\textbf{To do:}~#1$\rangle$}
+
+\EndFmtInput
+\makeatother
+%
+%
+%
+%
+%
+%
+% This package provides two environments suitable to take the place
+% of hscode, called "plainhscode" and "arrayhscode". 
+%
+% The plain environment surrounds each code block by vertical space,
+% and it uses \abovedisplayskip and \belowdisplayskip to get spacing
+% similar to formulas. Note that if these dimensions are changed,
+% the spacing around displayed math formulas changes as well.
+% All code is indented using \leftskip.
+%
+% Changed 19.08.2004 to reflect changes in colorcode. Should work with
+% CodeGroup.sty.
+%
+\ReadOnlyOnce{polycode.fmt}%
+\makeatletter
+
+\newcommand{\hsnewpar}[1]%
+  {{\parskip=0pt\parindent=0pt\par\vskip #1\noindent}}
+
+% can be used, for instance, to redefine the code size, by setting the
+% command to \small or something alike
+\newcommand{\hscodestyle}{}
+
+% The command \sethscode can be used to switch the code formatting
+% behaviour by mapping the hscode environment in the subst directive
+% to a new LaTeX environment.
+
+\newcommand{\sethscode}[1]%
+  {\expandafter\let\expandafter\hscode\csname #1\endcsname
+   \expandafter\let\expandafter\endhscode\csname end#1\endcsname}
+
+% "compatibility" mode restores the non-polycode.fmt layout.
+
+\newenvironment{compathscode}%
+  {\par\noindent
+   \advance\leftskip\mathindent
+   \hscodestyle
+   \let\\=\@normalcr
+   \let\hspre\(\let\hspost\)%
+   \pboxed}%
+  {\endpboxed\)%
+   \par\noindent
+   \ignorespacesafterend}
+
+\newcommand{\compaths}{\sethscode{compathscode}}
+
+% "plain" mode is the proposed default.
+% It should now work with \centering.
+% This required some changes. The old version
+% is still available for reference as oldplainhscode.
+
+\newenvironment{plainhscode}%
+  {\hsnewpar\abovedisplayskip
+   \advance\leftskip\mathindent
+   \hscodestyle
+   \let\hspre\(\let\hspost\)%
+   \pboxed}%
+  {\endpboxed%
+   \hsnewpar\belowdisplayskip
+   \ignorespacesafterend}
+
+\newenvironment{oldplainhscode}%
+  {\hsnewpar\abovedisplayskip
+   \advance\leftskip\mathindent
+   \hscodestyle
+   \let\\=\@normalcr
+   \(\pboxed}%
+  {\endpboxed\)%
+   \hsnewpar\belowdisplayskip
+   \ignorespacesafterend}
+
+% Here, we make plainhscode the default environment.
+
+\newcommand{\plainhs}{\sethscode{plainhscode}}
+\newcommand{\oldplainhs}{\sethscode{oldplainhscode}}
+\plainhs
+
+% The arrayhscode is like plain, but makes use of polytable's
+% parray environment which disallows page breaks in code blocks.
+
+\newenvironment{arrayhscode}%
+  {\hsnewpar\abovedisplayskip
+   \advance\leftskip\mathindent
+   \hscodestyle
+   \let\\=\@normalcr
+   \(\parray}%
+  {\endparray\)%
+   \hsnewpar\belowdisplayskip
+   \ignorespacesafterend}
+
+\newcommand{\arrayhs}{\sethscode{arrayhscode}}
+
+% The mathhscode environment also makes use of polytable's parray 
+% environment. It is supposed to be used only inside math mode 
+% (I used it to typeset the type rules in my thesis).
+
+\newenvironment{mathhscode}%
+  {\parray}{\endparray}
+
+\newcommand{\mathhs}{\sethscode{mathhscode}}
+
+% texths is similar to mathhs, but works in text mode.
+
+\newenvironment{texthscode}%
+  {\(\parray}{\endparray\)}
+
+\newcommand{\texths}{\sethscode{texthscode}}
+
+% The framed environment places code in a framed box.
+
+\def\codeframewidth{\arrayrulewidth}
+\RequirePackage{calc}
+
+\newenvironment{framedhscode}%
+  {\parskip=\abovedisplayskip\par\noindent
+   \hscodestyle
+   \arrayrulewidth=\codeframewidth
+   \tabular{@{}|p{\linewidth-2\arraycolsep-2\arrayrulewidth-2pt}|@{}}%
+   \hline\framedhslinecorrect\\{-1.5ex}%
+   \let\endoflinesave=\\
+   \let\\=\@normalcr
+   \(\pboxed}%
+  {\endpboxed\)%
+   \framedhslinecorrect\endoflinesave{.5ex}\hline
+   \endtabular
+   \parskip=\belowdisplayskip\par\noindent
+   \ignorespacesafterend}
+
+\newcommand{\framedhslinecorrect}[2]%
+  {#1[#2]}
+
+\newcommand{\framedhs}{\sethscode{framedhscode}}
+
+% The inlinehscode environment is an experimental environment
+% that can be used to typeset displayed code inline.
+
+\newenvironment{inlinehscode}%
+  {\(\def\column##1##2{}%
+   \let\>\undefined\let\<\undefined\let\\\undefined
+   \newcommand\>[1][]{}\newcommand\<[1][]{}\newcommand\\[1][]{}%
+   \def\fromto##1##2##3{##3}%
+   \def\nextline{}}{\) }%
+
+\newcommand{\inlinehs}{\sethscode{inlinehscode}}
+
+% The joincode environment is a separate environment that
+% can be used to surround and thereby connect multiple code
+% blocks.
+
+\newenvironment{joincode}%
+  {\let\orighscode=\hscode
+   \let\origendhscode=\endhscode
+   \def\endhscode{\def\hscode{\endgroup\def\@currenvir{hscode}\\}\begingroup}
+   %\let\SaveRestoreHook=\empty
+   %\let\ColumnHook=\empty
+   %\let\resethooks=\empty
+   \orighscode\def\hscode{\endgroup\def\@currenvir{hscode}}}%
+  {\origendhscode
+   \global\let\hscode=\orighscode
+   \global\let\endhscode=\origendhscode}%
+
+\makeatother
+\EndFmtInput
+%
+% Strachey keywords
+
+
+
+
+
+% Infix
+
+
+
+% Strachey operations
+
+\definecolor{opcolor}{RGB}{100,0,0} 
+\newcommand{\STOperation}[1]{\mathcolor{opcolor}{\text{#1}}}
+
+
+% Other
+
+
+\definecolor{highlight}{RGB}{220,220,220} 
+
+
+% invisible char, for alignment
+%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
+%% 
+%% Haskell Styling
+%%
+%% TODO: Figure out spacing!
+
+%% Colors (from duo-tone light syntax)
+\definecolor{hsblack}{RGB}{45,32,3}
+\definecolor{hsgold1}{RGB}{145,134,119}
+\definecolor{hsgold2}{RGB}{100,95,40}
+\definecolor{hsgold3}{RGB}{190,106,13}%{192,96,4}%{132,97,19}
+\definecolor{hsblue1}{RGB}{173,176,182}
+\definecolor{hsblue2}{RGB}{113,142,205}
+\definecolor{hsblue3}{RGB}{0,33,132}
+\definecolor{hsblue4}{RGB}{97,108,132}
+\definecolor{hsblue5}{RGB}{34,50,68}
+\definecolor{hsred2}{RGB}{191,121,103}
+\definecolor{hsred3}{RGB}{171,72,46}
+
+\definecolor{kwcolor}{RGB}{30,0,150}
+\definecolor{concolor}{RGB}{40,40,40}
+
+%% LaTeX Kerning nastiness. By using curly braces to delimit color group,
+%% it breaks spacing. The following seems to work:
+%%
+%% https://tex.stackexchange.com/questions/85033/colored-symbols/85035#85035
+%%
+\newcommand*{\mathcolor}{}
+\def\mathcolor#1#{\mathcoloraux{#1}}
+\newcommand*{\mathcoloraux}[3]{%
+  \protect\leavevmode
+  \begingroup
+    \color#1{#2}#3%
+  \endgroup
+}
+\newcommand{\HSKeyword}[1]{\mathcolor{kwcolor}{\textbf{#1}}}
+\newcommand{\HSNumeral}[1]{\mathcolor{hsred3}{#1}}
+\newcommand{\HSChar}[1]{\mathcolor{hsred2}{#1}}
+\newcommand{\HSString}[1]{\mathcolor{hsred2}{#1}}
+\newcommand{\HSSpecial}[1]{\mathcolor{hsblue4}{#1}}
+\newcommand{\HSSym}[1]{\mathcolor{hsblue4}{#1}}
+\newcommand{\HSCon}[1]{\mathcolor{concolor}{\mathit{#1}}}
+\newcommand{\HSVar}[1]{\mathcolor{hsblue5}{\mathit{#1}}}
+\newcommand{\HSComment}[1]{\mathcolor{hsgold2}{\textit{#1}}}
+
+% subst char a    = "\HSChar{''" a "''}
+
+%%% lhs2TeX parser does not recognize '*' 
+%%% in kind annotations, it thinks it is a multiplication.
+
+
+
+% fixes the size difference between in-text code and code in figures. 
+\renewcommand{\hscodestyle}{\normalsize}
+\renewcommand{\figurename}{Figure}
+
+\newcommand{\strachey}{\textsc{CS}}
+\newcommand{\todo}[1]{{\color{red}\textbf{TODO:} #1}}
+
+\author{Cas van der Rest\orcidID{0000-0002-0059-5353} \and Casper Bach Poulsen\orcidID{0000-0003-0622-7639}}
+\institute{\email{c.r.vanderrest@tudelft.nl} \ \ \ \ 
+  \email{c.b.poulsen@tudelft.nl}
+ \\  Delft University of Technology, Delft, The Netherlands}
+
+% \author{Anonymous Authors}
+
+\titlerunning{Towards a Language for Defining Resuable Language Components}
+
+\begin{document}
+
+\maketitle
+
+\begin{abstract}
+
+  Developing programming languages is a difficult task that requires a lot of
+  time, effort, and expertise. Reusable programming language components make
+  this task easier, by allowing language designers to grab off-the-shelf
+  components for common language features. Modern functional programming
+  languages, however, lack support for reuse of definitions, and thus language
+  components defined using algebraic data types and pattern matching functions
+  cannot be reused without modifying or copying existing code. To improve the
+  situation, we introduce \strachey{}, a functional meta-language for developing
+  reusable programming language components, that features built-in support for
+  extensible data types and functions, as well as effects and handlers. In
+  \strachey{}, we can define language components using algebraic data types and
+  pattern matching functions, such that we can compose language components into
+  larger languages and define new interpretations for existing components
+  without modifying existing definitions.
+  
+\end{abstract}
+
+
+
+\section{Introduction}
+\label{sec:introduction}
+
+Developing programming languages is a difficult and time consuming task, which
+requires a lot of expertise from the language designer. One way to reduce the
+cost of language development is to build languages from \emph{reusable
+  programming components}, allowing language designers to grab off-the-shelf
+components for common language features. This approach has the potential to make
+language development both cheaper and more accesbile, while producing
+specifications that allow us to understand the semantics of language features
+independent from the language they are a part of. Modern functional programming
+languages, however, lack support for reuse of definitions, and as a result,
+language components built from algebraic data types and pattern matching
+functions cannot be reused without modifying or copying existing code.  To
+illustrate the kind of language components we would like to define modularly,
+and where current functional programming languages fall short for this purpose,
+we consider the implementation of a tiny expression language and its interpreter
+in Haskell:
+
+\newpage
+
+\begin{hscode}\SaveRestoreHook
+\column{B}{@{}>{\hspre}l<{\hspost}@{}}%
+\column{3}{@{}>{\hspre}l<{\hspost}@{}}%
+\column{19}{@{}>{\hspre}c<{\hspost}@{}}%
+\column{19E}{@{}l@{}}%
+\column{22}{@{}>{\hspre}l<{\hspost}@{}}%
+\column{E}{@{}>{\hspre}l<{\hspost}@{}}%
+\>[B]{}\HSKeyword{data}\;\HSCon{Expr}\HSSym{\mathrel{=}}\HSCon{Lit}\;\HSCon{Int}\HSSym{\mid} \HSCon{Div}\;\HSCon{Expr}\;\HSCon{Expr}{}\<[E]%
+\\[\blanklineskip]%
+\>[B]{}\HSVar{eval}\HSSym{::}\HSCon{MonadFail}\;\HSVar{m}\HSSym{\Rightarrow} \HSCon{Expr}\HSSym{\to} \HSVar{m}\;\HSCon{Int}{}\<[E]%
+\\
+\>[B]{}\HSVar{eval}\;\HSSpecial{(}\HSCon{Lit}\;\HSVar{x}\HSSpecial{)}{}\<[19]%
+\>[19]{}\HSSym{\mathrel{=}}{}\<[19E]%
+\>[22]{}{\HSKeyword{return}}\;\HSVar{x}{}\<[E]%
+\\
+\>[B]{}\HSVar{eval}\;\HSSpecial{(}\HSCon{Div}\;\HSVar{e1}\;\HSVar{e2}\HSSpecial{)}{}\<[19]%
+\>[19]{}\HSSym{\mathrel{=}}{}\<[19E]%
+\>[22]{}\HSKeyword{do}{}\<[E]%
+\\
+\>[B]{}\hsindent{3}{}\<[3]%
+\>[3]{}\HSVar{v1}\HSSym{\leftarrow} \HSVar{eval}\;\HSVar{e1}{}\<[E]%
+\\
+\>[B]{}\hsindent{3}{}\<[3]%
+\>[3]{}\HSVar{v2}\HSSym{\leftarrow} \HSVar{eval}\;\HSVar{e2}{}\<[E]%
+\\
+\>[B]{}\hsindent{3}{}\<[3]%
+\>[3]{}\HSKeyword{if}\;\HSVar{v2}\HSSym{\not\equiv} \HSNumeral{0}\;\HSKeyword{then}\;{\HSKeyword{return}}\;\HSSpecial{(}\HSVar{v1}\HSSym{\mathbin{`div`}}\HSVar{v2}\;\HSKeyword{else}\;{\STOperation{fail}}{}\<[E]%
+\ColumnHook
+\end{hscode}\resethooks
+
+\noindent
+The \ensuremath{\HSCon{Expr}} data type declares an abstract syntax type with constructors for
+literals and division, and the function \ensuremath{\HSVar{eval}} implements an interpreter for
+\ensuremath{\HSCon{Expr}}. Importantly, \ensuremath{\HSVar{eval}} needs to account for possible divisions by zero:
+evaluating \ensuremath{\HSCon{Div}\;\HSSpecial{(}\HSCon{Lit}\;\HSNumeral{10}\HSSpecial{)}\;\HSSpecial{(}\HSCon{Lit}\;\HSNumeral{0}\HSSpecial{)}}, for example, should safely evaluate to a
+result that indicates a failure, without crashing. For this reason \ensuremath{\HSVar{eval}} does
+not produce an \ensuremath{\HSCon{Int}} directly, but rather wraps its result in an abstract monad
+\ensuremath{\HSVar{m}} that encapsulates the side effects of interpretation. In this case, we only
+assume that \ensuremath{\HSVar{m}} is a member of the \ensuremath{\HSCon{MonadFail}} typeclass. The \ensuremath{\HSCon{MonadFail}} class
+hase one function, \ensuremath{{\HSVar{fail}}}:
+
+\begin{hscode}\SaveRestoreHook
+\column{B}{@{}>{\hspre}l<{\hspost}@{}}%
+\column{3}{@{}>{\hspre}l<{\hspost}@{}}%
+\column{E}{@{}>{\hspre}l<{\hspost}@{}}%
+\>[B]{}\HSKeyword{class}\;\HSCon{MonadFail}\;\HSVar{m}\;\HSKeyword{where}{}\<[E]%
+\\
+\>[B]{}\hsindent{3}{}\<[3]%
+\>[3]{}{\HSVar{fail}}\HSSym{::}\HSVar{m}\;\HSVar{a}{}\<[E]%
+\ColumnHook
+\end{hscode}\resethooks
+
+\noindent
+We refer to functions, such as \ensuremath{{\HSVar{fail}}}, that allow us to interact with an
+abstract monad as \emph{operations}. We choose to factor language definitions
+this way, because it allows us to both define a completely new interpretation
+such as pretty printing or compilation for \ensuremath{\HSCon{Expr}} by writing new functions
+\ensuremath{\HSVar{pretty}\HSSym{::}\HSCon{Expr}\HSSym{\to} \HSCon{String}} or \ensuremath{\HSVar{compile}\HSSym{::}\HSCon{Expr}\HSSym{\to} \HSVar{m}\;\HSSpecial{\HSSym{[\mskip1.5mu} }\HSCon{Instr}\HSSpecial{\HSSym{\mskip1.5mu]}}}, while also having
+the option to change the implementation of existing semantics, by supplying
+alternative implementations for the \ensuremath{{\STOperation{fail}}} operation. We can summarize this
+approach to defining language components with the following pipeline:
+
+\begin{center}
+$\text{Syntax}\ \xrightarrow{\,\mathrm{denotation}\,} \text{Operations} \xrightarrow{\, \mathrm{implementation}\,} \text{Result}$
+\end{center}
+
+\noindent
+That is, a \emph{denotation} maps \emph{syntax} to an appropriate domain. In the
+definition of this domain, we distinguish between the type of the resulting
+value, and the side effects of computing this result, which are encapsulated in
+an abstract monad. We interact with this abstract monad using \emph{operations},
+and thus to extract a result we must supply a monad that \emph{implements} all
+required operations.
+
+%% The reason for factoring definitions in this way is to make defining
+%% new interpretations of existing abstract syntax as convenient as possible. In
+%% some cases it is easiest to define a whole new denotation (e.g., pretty printing
+%% or compilation), while in other scenarios it is more convenient to change the
+%% implementation of an existing semantics (e.g., to switch between a declarative
+%% and efficient implementation of an interpreter). \todo{This ignores the aspect
+%%   of adding new syntax/components to existing languages}
+%% 
+What if we want to extend this language?  To add new constructors to the
+abstract syntax tree, we must extend the definition of \ensuremath{\HSCon{Expr}}, and modify
+\emph{all} functions that match on \ensuremath{\HSCon{Expr}} accordingly. Furthermore, the new
+clauses for these constructors may impose additional requirements on \ensuremath{\HSVar{m}} for
+which we would need to add more typeclass constraints, and any existing
+instantiations of \ensuremath{\HSVar{m}} would need to be updated to ensure that they are still a
+member of all required typeclasses.
+
+Clearly, for these reasons \ensuremath{\HSCon{Expr}} and \ensuremath{\HSVar{eval}} in their current form do not work
+very well as a reusable language component. We introduce \strachey{}, a
+functional meta-language for defining reusable programming language
+components. The goal of \strachey{} is to provide a language in which one can
+define language components by defining data types and pattern matching
+functions, like \ensuremath{\HSCon{Expr}} and \ensuremath{\HSVar{eval}}, in such a way that we compose the syntax,
+interpretations, and effects of a language component without affecting existing
+defintion. Importantly, we should also retain the possibility to add completely
+new interpretations for existing syntax by writing a new pattern matching
+function. In other words, \strachey{} should solve the \emph{expression
+  problem}~\cite{wadler1998expression}. 
+
+We can summarize this with following concrete design goals. In \strachey{}, one
+should be able to
+
+\begin{itemize}
+
+\item extend existing abstract syntax types with new constructors without having
+  to modify existing definitions, 
+
+\item extend existing denotations with clauses for new constructors, and define
+  new semantics for existing syntax by defining new denotations, 
+
+\item define abstract effect operations, and use these operations to implement
+  denotation clauses without having to worry about the operations needed by
+  other clauses, and 
+
+\item define implementations for effect operations that are independent from the
+  implementations of other operations.  
+  
+\end{itemize}
+
+
+\noindent
+There exist abstractions, such as \emph{Data Types \`{a} la
+  Carte}~\cite{DBLP:journals/jfp/Swierstra08} and \emph{Algebraic Effects and
+  Handlers}~\cite{DBLP:conf/esop/PlotkinP09}, that achieve the same
+goals. These provide the well-understood formalism on wich \strachey{} is
+built. \strachey{} then provides a convenient surface syntax for working with
+these abstractions that avoids the overhead that occurs when encoding them in a
+host language like Haskell. 
+
+\strachey{} is work in progress. There is a prototype implementation of an
+interpreter and interactive programming environment which we can use to define
+and run the examples from this abstract. We are, however, still in the process
+of developing and implementing a type system. In particular, we should
+statically detect errors resulting from missing implementations of function
+clauses.
+
+The name \strachey{} is an abbreviation of ``CompositionalSemantics''.  It is
+also the initials of Christopher Strachey, whose pioneering
+work~\cite{strachey1966towards} initiated the development of denotational
+semantics. In \emph{Fundamental Concepts in Programming
+  Languages}~\cite{DBLP:journals/lisp/Strachey00}, Strachey wrote that “the
+urgent task in programming languages is to explore the field of semantic
+possibilities”, and that we need to “recognize and isolate the central concepts”
+of programming languages. Today, five decades later, the words still ring
+true. The \strachey{} language aims to address this urgent task in programming
+languages, by supporting the definition of reusable (central) programming
+language concepts, via compositional denotation functions that map the syntax of
+programming languages to their meaning.
+
+
+\section{\strachey{} by Example}
+\label{sec:showcase}
+
+In this section, we give an example-driven introduction to \strachey{}'s
+features. 
+
+\subsection{Data Types and Functions}
+
+\strachey{} is a functional programming language, and comes equipped with
+algebraic data types and pattern matching functions. We declare a new inductive
+data type for natural numbers as follows:
+
+\begin{hscode}\SaveRestoreHook
+\column{B}{@{}>{\hspre}l<{\hspost}@{}}%
+\column{E}{@{}>{\hspre}l<{\hspost}@{}}%
+\>[B]{}\HSKeyword{data}\;\HSCon{Nat}\HSSym{\mathrel{=}}\HSCon{Zero}\HSSym{\mid} \HSCon{Suc}\;\HSCon{Nat}{}\<[E]%
+\ColumnHook
+\end{hscode}\resethooks
+
+\noindent
+We can write functions over inductive data types by pattern matching, using a
+``pipe'' ($\mid$) symbol to separate clauses: 
+
+\begin{hscode}\SaveRestoreHook
+\column{B}{@{}>{\hspre}l<{\hspost}@{}}%
+\column{12}{@{}>{\hspre}c<{\hspost}@{}}%
+\column{12E}{@{}l@{}}%
+\column{15}{@{}>{\hspre}l<{\hspost}@{}}%
+\column{E}{@{}>{\hspre}l<{\hspost}@{}}%
+\>[B]{}{\HSKeyword{fun}}\;\HSVar{double}\ \mathbf{:}\ \HSCon{Nat}\HSSym{\to} \HSCon{Nat}\;\HSKeyword{where}{}\<[E]%
+\\
+\>[B]{}\HSSym{\mid} \HSCon{Zero}{}\<[12]%
+\>[12]{}\HSSym{\mapsto}{}\<[12E]%
+\>[15]{}\HSCon{Zero}{}\<[E]%
+\\
+\>[B]{}\HSSym{\mid} \HSSpecial{(}\HSCon{Suc}\;\HSVar{n}\HSSpecial{)}{}\<[12]%
+\>[12]{}\HSSym{\mapsto}{}\<[12E]%
+\>[15]{}\HSCon{Suc}\;\HSSpecial{(}\HSCon{Suc}\;\HSSpecial{(}\HSVar{double}\;\HSVar{n}\HSSpecial{)}\HSSpecial{)}{}\<[E]%
+\ColumnHook
+\end{hscode}\resethooks
+
+\noindent
+Not all types are user-declared: \strachey{} also offers built-in types and
+syntax for integers, lists, tuples, and strings.
+
+\begin{hscode}\SaveRestoreHook
+\column{B}{@{}>{\hspre}l<{\hspost}@{}}%
+\column{4}{@{}>{\hspre}l<{\hspost}@{}}%
+\column{15}{@{}>{\hspre}l<{\hspost}@{}}%
+\column{26}{@{}>{\hspre}l<{\hspost}@{}}%
+\column{E}{@{}>{\hspre}l<{\hspost}@{}}%
+\>[B]{}{\HSKeyword{fun}}\;\HSVar{length}\ \mathbf{:}\ \HSCon{List}\;\HSVar{a}\HSSym{\to} \HSCon{Int}\;\HSKeyword{where}{}\<[E]%
+\\
+\>[B]{}\HSSym{\mid} {}\<[4]%
+\>[4]{}\HSSpecial{\HSSym{[\mskip1.5mu} }\HSSpecial{\HSSym{\mskip1.5mu]}}{}\<[15]%
+\>[15]{}\HSSym{\mapsto}\HSNumeral{0}{}\<[E]%
+\\
+\>[B]{}\HSSym{\mid} {}\<[4]%
+\>[4]{}\HSSpecial{(}\HSSym{\anonymous} \HSSym{::}\HSVar{xs}\HSSpecial{)}{}\<[15]%
+\>[15]{}\HSSym{\mapsto}\HSNumeral{1}\HSSym{+}\HSVar{length}\;\HSVar{xs}{}\<[E]%
+\\[\blanklineskip]%
+\>[B]{}{\HSKeyword{fun}}\;\HSVar{zip}\ \mathbf{:}\ \HSCon{List}\;\HSVar{a}\HSSym{\to} \HSCon{List}\;\HSVar{b}\HSSym{\to} \HSCon{List}\;\HSSpecial{(}\HSVar{a}\HSSym{*}\HSVar{b}\HSSpecial{)}\;\HSKeyword{where}{}\<[E]%
+\\
+\>[B]{}\HSSym{\mid} {}\<[4]%
+\>[4]{}\HSSpecial{\HSSym{[\mskip1.5mu} }\HSSpecial{\HSSym{\mskip1.5mu]}}\;{}\<[15]%
+\>[15]{}\HSSym{\anonymous} {}\<[26]%
+\>[26]{}\HSSym{\mapsto}\HSSpecial{\HSSym{[\mskip1.5mu} }\HSSpecial{\HSSym{\mskip1.5mu]}}{}\<[E]%
+\\
+\>[B]{}\HSSym{\mid} {}\<[4]%
+\>[4]{}\HSSpecial{(}\HSVar{x}\HSSym{::}\HSVar{xs}\HSSpecial{)}\;{}\<[15]%
+\>[15]{}\HSSpecial{(}\HSVar{y}\HSSym{::}\HSVar{ys}\HSSpecial{)}{}\<[26]%
+\>[26]{}\HSSym{\mapsto}\HSSpecial{(}\HSVar{x}\HSSpecial{,}\HSVar{y}\HSSpecial{)}\HSSym{::}\HSVar{zip}\;\HSVar{xs}\;\HSVar{ys}{}\<[E]%
+\ColumnHook
+\end{hscode}\resethooks
+
+\noindent
+Both \ensuremath{\HSVar{length}} and \ensuremath{\HSVar{zip}} are polymorphic in the type of elements stored in the
+input list(s). Functions implicitly generalize over any free variables in their
+type signature.
+
+\subsection{Effects and Handlers}
+\label{sec:effects-and-handlers}
+
+\strachey{} supports effectful programs by means of effects and handlers in the
+spirit of Plotkin and Pretnar~\cite{DBLP:conf/esop/PlotkinP09}, adapted to
+support higher-order operations. The key idea of the effects-and-handlers
+approach is to declare the syntax of effectful \emph{operations}, and assign a
+semantics to these operations in a separate \emph{handler}. Programs compute
+values and have side-effects, and operations act as the interface through which
+these side effects are triggered.
+
+We declare a new effect \ensuremath{\HSCon{Fail}} with a single operation \ensuremath{{\STOperation{fail}}} in \strachey{} as
+follows: 
+
+\begin{hscode}\SaveRestoreHook
+\column{B}{@{}>{\hspre}l<{\hspost}@{}}%
+\column{3}{@{}>{\hspre}l<{\hspost}@{}}%
+\column{E}{@{}>{\hspre}l<{\hspost}@{}}%
+\>[B]{}{\HSKeyword{effect}}\;\HSCon{Fail}\;\HSKeyword{where}{}\<[E]%
+\\
+\>[B]{}\hsindent{3}{}\<[3]%
+\>[3]{}{\STOperation{fail}}\ \mathbf{:}\ \HSSpecial{\HSSym{\{\mskip1.5mu} }\HSSpecial{\HSSym{[\mskip1.5mu} }\HSCon{Fail}\HSSpecial{\HSSym{\mskip1.5mu]}}\;\HSVar{a}\HSSpecial{\HSSym{\mskip1.5mu\}}}{}\<[E]%
+\ColumnHook
+\end{hscode}\resethooks
+
+\noindent
+Effects in \strachey{} are declared with the \ensuremath{{\HSKeyword{effect}}} keyword, and we declare
+its operations by giving a list of GADT-style signatures. In this case, the
+\ensuremath{{\STOperation{fail}}} operation is declared to have type \ensuremath{\HSSpecial{\HSSym{\{\mskip1.5mu} }\HSSpecial{\HSSym{[\mskip1.5mu} }\HSCon{Fail}\HSSpecial{\HSSym{\mskip1.5mu]}}\;\HSVar{a}\HSSpecial{\HSSym{\mskip1.5mu\}}}}. We enclose the type of
+\ensuremath{{\STOperation{fail}}} in braces ($\{-\}$) to indicate that the name \ensuremath{{\STOperation{fail}}} refers to a
+\emph{suspended computation} (\cref{sec:evaluation-order}). Suspended
+computations are annotated with an \emph{effect row}, enclosed in square
+brackets ($[-]$), denoting the side effects of running the computation. Invoking
+the \ensuremath{{\STOperation{fail}}} operation has \ensuremath{\HSCon{Fail}} as a side effect.
+
+We can use the \ensuremath{\HSCon{Fail}} effect to implement a safe division function that invokes
+\ensuremath{{\STOperation{fail}}} if the divisor is zero.
+
+\begin{hscode}\SaveRestoreHook
+\column{B}{@{}>{\hspre}l<{\hspost}@{}}%
+\column{4}{@{}>{\hspre}l<{\hspost}@{}}%
+\column{E}{@{}>{\hspre}l<{\hspost}@{}}%
+\>[B]{}{\HSKeyword{fun}}\;\HSVar{safeDiv}\ \mathbf{:}\ \HSCon{Int}\HSSym{\to} \HSCon{Int}\HSSym{\to} \HSSpecial{\HSSym{[\mskip1.5mu} }\HSCon{Fail}\HSSpecial{\HSSym{\mskip1.5mu]}}\;\HSCon{Int}\;\HSKeyword{where}{}\<[E]%
+\\
+\>[B]{}\HSSym{\mid} {}\<[4]%
+\>[4]{}\HSVar{x}\;\HSNumeral{0}\HSSym{\mapsto}{\STOperation{fail}}!\ {}\<[E]%
+\\
+\>[B]{}\HSSym{\mid} {}\<[4]%
+\>[4]{}\HSVar{x}\;\HSVar{y}\HSSym{\mapsto}\HSSym{...}{}\<[E]%
+\ColumnHook
+\end{hscode}\resethooks
+
+\noindent
+The postfix exclamation mark to \ensuremath{{\STOperation{fail}}} is necessary to force the suspended
+computation. Here, we want to refer to the ``action'' of failing, rather than
+the computation itself, following Frank's~\cite{DBLP:journals/jfp/ConventLMM20}
+separation between ``being and doing''. We elaborate on this distinction in
+\cref{sec:evaluation-order}.
+
+A function's type signature must explicitly indicate its side-effects. In this
+case, we annotate the return type of \ensuremath{\HSVar{safeDiv}} with the \ensuremath{\HSCon{Fail}} effect to
+indicate that its implementation uses operations of this effect. Removing the
+annotation would make the above invocation of \ensuremath{{\STOperation{fail}}} ill-typed. For functions
+that have no side-effects, we may omit its row annotation: \ensuremath{\HSVar{a}\HSSym{\to} \HSVar{b}} is
+synonymous to \ensuremath{\HSVar{a}\HSSym{\to} \HSSpecial{\HSSym{[\mskip1.5mu} }\HSSpecial{\HSSym{\mskip1.5mu]}}\;\HSVar{b}}
+
+Handlers discharge an effect from annotations by assigning a semantics to its
+operations. For the \ensuremath{\HSCon{Fail}} effect, we can do this by encoding exceptions in the
+\ensuremath{\HSCon{Maybe}} type.
+
+\begin{hscode}\SaveRestoreHook
+\column{B}{@{}>{\hspre}l<{\hspost}@{}}%
+\column{4}{@{}>{\hspre}l<{\hspost}@{}}%
+\column{12}{@{}>{\hspre}l<{\hspost}@{}}%
+\column{15}{@{}>{\hspre}l<{\hspost}@{}}%
+\column{E}{@{}>{\hspre}l<{\hspost}@{}}%
+\>[B]{}\HSKeyword{data}\;\HSCon{Maybe}\;\HSVar{a}\HSSym{\mathrel{=}}\HSCon{Just}\;\HSVar{a}\HSSym{\mid} \HSCon{Nothing}{}\<[E]%
+\\[\blanklineskip]%
+\>[B]{}{\HSKeyword{handler}}\;\HSVar{hFail}\ \mathbf{:}\ \HSSpecial{\HSSym{\{\mskip1.5mu} }\HSSpecial{\HSSym{[\mskip1.5mu} }\HSCon{Fail}\HSSym{|}\HSVar{e}\HSSpecial{\HSSym{\mskip1.5mu]}}\;\HSVar{a}\HSSpecial{\HSSym{\mskip1.5mu\}}}\HSSym{\to} \HSSpecial{\HSSym{\{\mskip1.5mu} }\HSSpecial{\HSSym{[\mskip1.5mu} }\HSVar{e}\HSSpecial{\HSSym{\mskip1.5mu]}}\;\HSSpecial{(}\HSCon{Maybe}\;\HSVar{a}\HSSpecial{)}\HSSpecial{\HSSym{\mskip1.5mu\}}}\;\HSKeyword{where}{}\<[E]%
+\\
+\>[B]{}\HSSym{\mid} {}\<[4]%
+\>[4]{}{\STOperation{fail}}\;{}\<[12]%
+\>[12]{}\HSVar{k}{}\<[15]%
+\>[15]{}\HSSym{\mapsto}\HSSpecial{\HSSym{\{\mskip1.5mu} }\HSCon{Nothing}\HSSpecial{\HSSym{\mskip1.5mu\}}}{}\<[E]%
+\\
+\>[B]{}\HSSym{\mid} {}\<[4]%
+\>[4]{}{\HSKeyword{return}}\;{}\<[12]%
+\>[12]{}\HSVar{x}{}\<[15]%
+\>[15]{}\HSSym{\mapsto}\HSSpecial{\HSSym{\{\mskip1.5mu} }\HSCon{Just}\;\HSVar{x}\HSSpecial{\HSSym{\mskip1.5mu\}}}{}\<[E]%
+\ColumnHook
+\end{hscode}\resethooks
+
+\noindent
+The handler \ensuremath{\HSVar{hFail}} takes a value annotated with the \ensuremath{\HSCon{Fail}} effect, and produces
+a \ensuremath{\HSCon{Maybe}} value annotated with the remaining effects \ensuremath{\HSVar{e}}. All free effect row
+variables in a signature, like \ensuremath{\HSVar{e}}, are implicitly generalized over. When
+defining a handler we must provide a clause for each operation of the handled
+effect. Additionally, we must write a \ensuremath{{\HSKeyword{return}}} clause that lifts pure values
+into the domain that encodes the effect's semantics. Operation clauses have a
+\emph{continuation parameter}, \ensuremath{\HSVar{k}}, with type \ensuremath{\HSVar{b}\HSSym{\to} \HSSpecial{\HSSym{[\mskip1.5mu} }\HSVar{e}\HSSpecial{\HSSym{\mskip1.5mu]}}\;\HSSpecial{(}\HSCon{Maybe}\;\HSVar{a}\HSSpecial{)}}, which captures
+the remainder of the program starting from the current operation. Handlers may
+use the continuation parameter to decide how execution should resume after the
+current operation is handled. For example, when handing the \ensuremath{{\STOperation{fail}}} operation we
+terminate execution of the program by ignoring this continuation.
+
+We use the continuation parameter in a different way when defining a handler for
+a \ensuremath{\HSCon{State}} effect, where \ensuremath{\HSVar{s}\ \mathbf{:}\ \HSCon{Set}} is a parameter of the module in which we
+define the effect. 
+
+\begin{hscode}\SaveRestoreHook
+\column{B}{@{}>{\hspre}l<{\hspost}@{}}%
+\column{4}{@{}>{\hspre}l<{\hspost}@{}}%
+\column{9}{@{}>{\hspre}l<{\hspost}@{}}%
+\column{11}{@{}>{\hspre}l<{\hspost}@{}}%
+\column{14}{@{}>{\hspre}l<{\hspost}@{}}%
+\column{17}{@{}>{\hspre}l<{\hspost}@{}}%
+\column{18}{@{}>{\hspre}l<{\hspost}@{}}%
+\column{21}{@{}>{\hspre}l<{\hspost}@{}}%
+\column{29}{@{}>{\hspre}l<{\hspost}@{}}%
+\column{E}{@{}>{\hspre}l<{\hspost}@{}}%
+\>[B]{}{\HSKeyword{effect}}\;\HSCon{State}\;\HSKeyword{where}{}\<[E]%
+\\
+\>[B]{}\HSSym{\mid} {}\<[4]%
+\>[4]{}{\STOperation{get}}{}\<[9]%
+\>[9]{}\ \mathbf{:}\ {}\<[17]%
+\>[17]{}\HSSpecial{\HSSym{[\mskip1.5mu} }\HSCon{State}\HSSpecial{\HSSym{\mskip1.5mu]}}\;\HSVar{s}{}\<[E]%
+\\
+\>[B]{}\HSSym{\mid} {}\<[4]%
+\>[4]{}{\STOperation{put}}{}\<[9]%
+\>[9]{}\ \mathbf{:}\ \HSVar{s}\HSSym{\to} {}\<[17]%
+\>[17]{}\HSSpecial{\HSSym{[\mskip1.5mu} }\HSCon{State}\HSSpecial{\HSSym{\mskip1.5mu]}}\;\HSSpecial{(}\HSSpecial{)}{}\<[E]%
+\\[\blanklineskip]%
+\>[B]{}{\HSKeyword{handler}}\;\HSVar{hState}\ \mathbf{:}\ \HSSpecial{\HSSym{\{\mskip1.5mu} }\HSSpecial{\HSSym{[\mskip1.5mu} }\HSCon{State}\HSSym{|}\HSVar{e}\HSSpecial{\HSSym{\mskip1.5mu]}}\;\HSVar{a}\HSSpecial{\HSSym{\mskip1.5mu\}}}\HSSym{\to} \HSVar{s}\HSSym{\to} \HSSpecial{\HSSym{\{\mskip1.5mu} }\HSSpecial{\HSSym{[\mskip1.5mu} }\HSVar{e}\HSSpecial{\HSSym{\mskip1.5mu]}}\;\HSSpecial{(}\HSVar{a}\HSSym{*}\HSVar{s}\HSSpecial{)}\HSSpecial{\HSSym{\mskip1.5mu\}}}\;\HSKeyword{where}{}\<[E]%
+\\
+\>[B]{}\HSSym{\mid} {\STOperation{get}}\;{}\<[14]%
+\>[14]{}\HSVar{st}\;{}\<[18]%
+\>[18]{}\HSVar{k}{}\<[21]%
+\>[21]{}\HSSym{\mapsto}\HSVar{k}\;\HSVar{st}\;{}\<[29]%
+\>[29]{}\HSVar{st}{}\<[E]%
+\\
+\>[B]{}\HSSym{\mid} \HSSpecial{(}{\STOperation{put}}\;\HSVar{st'}\HSSpecial{)}\;{}\<[14]%
+\>[14]{}\HSVar{st}\;{}\<[18]%
+\>[18]{}\HSVar{k}{}\<[21]%
+\>[21]{}\HSSym{\mapsto}\HSVar{k}\;\HSSpecial{(}\HSSpecial{)}\;{}\<[29]%
+\>[29]{}\HSVar{st'}{}\<[E]%
+\\
+\>[B]{}\HSSym{\mid} {\HSKeyword{return}}\;{}\<[11]%
+\>[11]{}\HSVar{x}\;{}\<[14]%
+\>[14]{}\HSVar{st}{}\<[21]%
+\>[21]{}\HSSym{\mapsto}\HSSpecial{\HSSym{\{\mskip1.5mu} }\HSSpecial{(}\HSVar{x}\HSSpecial{,}\HSVar{st}\HSSpecial{)}\HSSpecial{\HSSym{\mskip1.5mu\}}}{}\<[E]%
+\ColumnHook
+\end{hscode}\resethooks
+
+\noindent
+For both the \ensuremath{{\STOperation{get}}} and \ensuremath{{\STOperation{put}}} operations, we use the continuation parameter \ensuremath{\HSVar{k}}
+to implement the corresponding branch in \ensuremath{\HSVar{hState}}. The continuation expects a
+value whose type corresponds to the return type of the current operation, and
+produces a computation with the same type as the return type of the handler. For
+the \ensuremath{{\STOperation{put}}} operation, for example, this means that \ensuremath{\HSVar{k}} is of type \ensuremath{\HSSpecial{(}\HSSpecial{)}\HSSym{\to} \HSVar{s}\HSSym{\to} \HSSpecial{\HSSym{\{\mskip1.5mu} }\HSSpecial{\HSSym{[\mskip1.5mu} }\HSVar{e}\HSSpecial{\HSSym{\mskip1.5mu]}}\;\HSSpecial{(}\HSVar{a}\HSSym{*}\HSVar{s}\HSSpecial{)}\HSSpecial{\HSSym{\mskip1.5mu\}}}}. The implementation of \ensuremath{\HSVar{hState}} for \ensuremath{{\STOperation{get}}} and \ensuremath{{\STOperation{put}}} then simply
+invokes \ensuremath{\HSVar{k}}, using the current state as both the value and input state (\ensuremath{{\STOperation{get}}}),
+or giving a unit value and using the given state \ensuremath{\HSVar{st'}} as the input state
+(\ensuremath{{\STOperation{put}}}). Effectively, this means that after handling \ensuremath{{\STOperation{get}}} or \ensuremath{{\STOperation{put}}}, execution
+of the program resumes, respectively with the same state or an updated state
+\ensuremath{\HSVar{st'}}.
+
+Handlers in \strachey{} are so-called \emph{deep handlers}, meaning that they
+are automatically distributed over continuations. For the example above, this
+means that that the \ensuremath{\HSCon{State}} effect is already handled in the computation
+returned by \ensuremath{\HSVar{k}}. The alternative is \emph{shallow handlers}, in which case \ensuremath{\HSVar{k}}
+would return a computation of type \ensuremath{\HSSpecial{\HSSym{\{\mskip1.5mu} }\HSSpecial{\HSSym{[\mskip1.5mu} }\HSCon{State}}$\mid$\ensuremath{\HSVar{e}\HSSpecial{\HSSym{\mskip1.5mu]}}\;\HSVar{a}\HSSpecial{\HSSym{\mskip1.5mu\}}}}. When using shallow
+handlers, the programmer is responsible for recursively applying the handler to
+the result of continuations. While shallow handlers are more expressive, unlike
+deep handlers they are not guaranteed to correspond to a fold over the effect
+tree, meaning that they are potentially harder to reason about.
+
+\subsection{Order of Evaluation, Suspension, and Enactment}
+\label{sec:evaluation-order}
+
+Inspired by Frank~\cite{DBLP:journals/jfp/ConventLMM20}, \strachey{} allows
+effectful computations to be used as if they were pure values, without having to
+sequence them. Sub-expressions in \strachey{} are evaluated from left to right,
+and the side-effects of computational sub-expressions are evaluated eagerly in
+that order. For example, consider the following program:
+
+\begin{hscode}\SaveRestoreHook
+\column{B}{@{}>{\hspre}l<{\hspost}@{}}%
+\column{4}{@{}>{\hspre}l<{\hspost}@{}}%
+\column{E}{@{}>{\hspre}l<{\hspost}@{}}%
+\>[B]{}{\HSKeyword{fun}}\;\HSVar{f}\ \mathbf{:}\ \HSCon{Int}\HSSym{\to} \HSSpecial{\HSSym{[\mskip1.5mu} }\HSCon{Fail}\HSSpecial{\HSSym{\mskip1.5mu]}}\;\HSCon{Int}\;\HSKeyword{where}{}\<[E]%
+\\
+\>[B]{}\HSSym{\mid} {}\<[4]%
+\>[4]{}\HSVar{n}\HSSym{\mapsto}{\STOperation{fail}}!\ \HSSym{+}\HSVar{n}{}\<[E]%
+\ColumnHook
+\end{hscode}\resethooks
+
+\noindent
+Here, we use the expression \ensuremath{{\STOperation{fail}}!\ } (whose type is instantiated to \ensuremath{\HSSpecial{\HSSym{[\mskip1.5mu} }\HSCon{Fail}\HSSpecial{\HSSym{\mskip1.5mu]}}\;\HSCon{Int}}) as the first argument to \ensuremath{\HSSym{+}}, where a value of type \ensuremath{\HSCon{Int}} is
+expected. This is fine, because side-effects that occur during evaluation of
+sub-terms are discharged to the surrounding context. That is, the side-effects
+of evaluating computational sub-terms in the definition of \ensuremath{\HSVar{f}} become
+side-effects of \ensuremath{\HSVar{f}} itself.
+
+In practice, this means that function application in \strachey{} is not unlike
+programming in an \emph{applicative style} in Haskell. For instance, when using
+the previously-defined handler \ensuremath{\HSVar{hFail}}, which maps the \ensuremath{\HSCon{Fail}} effect to a
+\ensuremath{\HSCon{Maybe}}, we can  informally understand the semantics of the \strachey{} program above as
+equivalent to the following Haskell program: 
+
+\begin{hscode}\SaveRestoreHook
+\column{B}{@{}>{\hspre}l<{\hspost}@{}}%
+\column{E}{@{}>{\hspre}l<{\hspost}@{}}%
+\>[B]{}\HSVar{f}\HSSym{::}\HSCon{Int}\HSSym{\to} \HSCon{Maybe}\;\HSCon{Int}{}\<[E]%
+\\
+\>[B]{}\HSVar{f}\;\HSVar{n}\HSSym{\mathrel{=}}\HSSpecial{(}\HSSym{+}\HSSpecial{)}\HSSpecial{\ensuremath{<\!\!\$\!\!>}}\HSCon{Nothing}\HSSpecial{\ensuremath{<\!\!*\!\!>}}\HSVar{pure}\;\HSVar{n}{}\<[E]%
+\ColumnHook
+\end{hscode}\resethooks
+
+\noindent
+Equivalently, we could write the following \emph{monadic} program in Haskell,
+which makes the evaluation order explicit.
+
+\begin{hscode}\SaveRestoreHook
+\column{B}{@{}>{\hspre}l<{\hspost}@{}}%
+\column{11}{@{}>{\hspre}l<{\hspost}@{}}%
+\column{E}{@{}>{\hspre}l<{\hspost}@{}}%
+\>[B]{}\HSVar{f}\HSSym{::}\HSCon{Int}\HSSym{\to} \HSCon{Maybe}\;\HSCon{Int}{}\<[E]%
+\\
+\>[B]{}\HSVar{f}\;\HSVar{n}\HSSym{\mathrel{=}}\HSKeyword{do}\;{}\<[11]%
+\>[11]{}\HSVar{x}\HSSym{\leftarrow} \HSCon{Nothing}{}\<[E]%
+\\
+\>[11]{}\HSVar{y}\HSSym{\leftarrow} \HSVar{pure}\;\HSVar{n}{}\<[E]%
+\\
+\>[11]{}{\HSKeyword{return}}\;\HSSpecial{(}\HSVar{x}\HSSym{+}\HSVar{y}\HSSpecial{)}{}\<[E]%
+\ColumnHook
+\end{hscode}\resethooks
+
+\strachey{}'s eager treatment of side-effects means that effectful computations
+are not first-class values, in the sense that we cannot refer to an effectful
+computation without triggering its side effects. To treat computations as
+first-class, we must explicitly \emph{suspend} their effects using
+\emph{braces}:
+
+\begin{hscode}\SaveRestoreHook
+\column{B}{@{}>{\hspre}l<{\hspost}@{}}%
+\column{4}{@{}>{\hspre}l<{\hspost}@{}}%
+\column{E}{@{}>{\hspre}l<{\hspost}@{}}%
+\>[B]{}{\HSKeyword{fun}}\;\HSVar{f'}\ \mathbf{:}\ \HSCon{Int}\HSSym{\to} \HSSpecial{\HSSym{\{\mskip1.5mu} }\HSSpecial{\HSSym{[\mskip1.5mu} }\HSCon{Fail}\HSSpecial{\HSSym{\mskip1.5mu]}}\;\HSCon{Int}\HSSpecial{\HSSym{\mskip1.5mu\}}}\;\HSKeyword{where}{}\<[E]%
+\\
+\>[B]{}\HSSym{\mid} {}\<[4]%
+\>[4]{}\HSVar{n}\HSSym{\mapsto}\HSSpecial{\HSSym{\{\mskip1.5mu} }\HSVar{f}\;\HSVar{n}\HSSpecial{\HSSym{\mskip1.5mu\}}}{}\<[E]%
+\ColumnHook
+\end{hscode}\resethooks
+
+\noindent
+The function \ensuremath{\HSVar{f'}} is no longer a function on \ensuremath{\HSCon{Int}} that may fail, but instead a
+function from \ensuremath{\HSCon{Int}} to a computation that returns and \ensuremath{\HSCon{Int}}, but that could also
+fail. We indicate a suspended computation in types using braces (\{/\}), and
+construct a suspension at the term level using the same notation. 
+
+To \emph{enact} the side-effects of a suspended computation, we postfix it with
+an exclamation mark ($!$). For example, the expression \ensuremath{\HSSpecial{(}\HSVar{f'}\;\HSNumeral{0}\HSSpecial{)}!\ } has type
+\ensuremath{\HSSpecial{\HSSym{[\mskip1.5mu} }\HSCon{Fail}\HSSpecial{\HSSym{\mskip1.5mu]}}\;\HSCon{Int}}, whereas the expression \ensuremath{\HSSpecial{(}\HSVar{f'}\;\HSNumeral{0}\HSSpecial{)}} has type \ensuremath{\HSSpecial{\HSSym{\{\mskip1.5mu} }\HSSpecial{\HSSym{[\mskip1.5mu} }\HSCon{Fail}\HSSpecial{\HSSym{\mskip1.5mu]}}\;\HSCon{Int}\HSSpecial{\HSSym{\mskip1.5mu\}}}}. We see
+the same distinction with operations declared using the \ensuremath{{\HSKeyword{effect}}} keyword. When
+we write \ensuremath{{\STOperation{fail}}}, we refer to the operation in a descriptive sense, and we can
+treat it like any other value without having to worry about its
+side-effects. When writing \ensuremath{{\STOperation{fail}}!\ }, on the other hand, we are really
+performing the action of abruptly terminating: \ensuremath{{\STOperation{fail}}} \emph{is} and \ensuremath{{\STOperation{fail}}!\ }
+\emph{does}.
+
+
+\subsection{Modules and Imports}
+
+\strachey{} programs are organized using modules. Modules are delimited
+using the \ensuremath{\HSKeyword{module}} and \ensuremath{{\HSKeyword{end}}} keywords, and their definitions can be brought into
+scope elsewhere using the \ensuremath{\HSKeyword{import}} keyword. All declarations---i.e., data types,
+functions, effects, and handlers---must occur inside a module.
+
+\begin{hscode}\SaveRestoreHook
+\column{B}{@{}>{\hspre}l<{\hspost}@{}}%
+\column{3}{@{}>{\hspre}l<{\hspost}@{}}%
+\column{E}{@{}>{\hspre}l<{\hspost}@{}}%
+\>[B]{}\HSKeyword{module}\;\HSCon{A}\;\HSKeyword{where}{}\<[E]%
+\\
+\>[B]{}\hsindent{3}{}\<[3]%
+\>[3]{}{\HSKeyword{fun}}\;\HSVar{f}\ \mathbf{:}\ \HSCon{Int}\HSSym{\to} \HSCon{Int}\;\HSKeyword{where}{}\<[E]%
+\\
+\>[B]{}\hsindent{3}{}\<[3]%
+\>[3]{}\HSSym{\mid} \HSVar{n}\HSSym{\mapsto}\HSVar{n}\HSSym{+}\HSVar{n}{}\<[E]%
+\\
+\>[B]{}{\HSKeyword{end}}{}\<[E]%
+\\[\blanklineskip]%
+\>[B]{}\HSKeyword{module}\;\HSCon{B}\;\HSKeyword{where}{}\<[E]%
+\\
+\>[B]{}\hsindent{3}{}\<[3]%
+\>[3]{}\HSKeyword{import}\;\HSCon{A}{}\<[E]%
+\\
+\>[B]{}\hsindent{3}{}\<[3]%
+\>[3]{}{\HSKeyword{fun}}\;\HSVar{g}\ \mathbf{:}\ \HSCon{Int}\HSSym{\to} \HSCon{Int}\;\HSKeyword{where}{}\<[E]%
+\\
+\>[B]{}\hsindent{3}{}\<[3]%
+\>[3]{}\HSSym{\mid} \HSVar{n}\HSSym{\mapsto}\HSVar{f}\;\HSVar{n}{}\<[E]%
+\\
+\>[B]{}{\HSKeyword{end}}{}\<[E]%
+\ColumnHook
+\end{hscode}\resethooks
+
+\noindent
+In addition to being an organizational tool, modules play a key role in defining
+and composing modular data types and functions.
+
+
+\subsection{Composable Data Types and Functions}
+\label{sec:composable-types-and-functions}
+
+In addition to plain algebraic data types and pattern matching functions,
+declared using the \ensuremath{\HSKeyword{data}} and \ensuremath{{\HSKeyword{fun}}} keywords, \strachey{} also supports
+case-by-case definitions of \emph{extensible} data types and functions. In
+effect, \strachey{} provides a convenient surface syntax for working with
+DTC-style~\cite{DBLP:journals/jfp/Swierstra08} definitions, which relies on an
+embedding of the initial algebra semantics~\cite{DBLP:conf/tlca/JohannG07} of
+data types to give a semantics to extensible and composable algebraic data types
+and functions, meaning that extensible functions have to correspond to a
+\emph{fold}~\cite{DBLP:conf/fpca/MeijerFP91}. In \strachey{}, one can program
+with extensible data types and functions in the same familiar way as with their
+plain, non-extensible counterparts.
+
+The module system plays an essential role in the definition of composable data
+types and functions. That is, modules can inhabit a \emph{signature} that
+declares the extensible types and functions for which that module can give a
+partial definition. In a signature declaration, we use the keyword \ensuremath{{\HSKeyword{sort}}} to
+declare an extensible data type, and the \ensuremath{{\HSKeyword{alg}}} keyword to declare an
+extensible function, or \emph{algebra}. By requiring extensible functions to be
+defined as algebras over the functor semantics of extensible data types, we
+enforce \emph{by construction} that they correspond to a fold. 
+
+As an example, consider the following signature that declares an extensible data
+type \ensuremath{\HSCon{Expr}}, which can be evaluated to an integer using \ensuremath{\HSVar{eval}}.
+
+\begin{hscode}\SaveRestoreHook
+\column{B}{@{}>{\hspre}l<{\hspost}@{}}%
+\column{3}{@{}>{\hspre}l<{\hspost}@{}}%
+\column{9}{@{}>{\hspre}l<{\hspost}@{}}%
+\column{E}{@{}>{\hspre}l<{\hspost}@{}}%
+\>[B]{}{\HSKeyword{signature}}\;\HSCon{Eval}\;\HSKeyword{where}{}\<[E]%
+\\
+\>[B]{}\hsindent{3}{}\<[3]%
+\>[3]{}{\HSKeyword{sort}}\;{}\<[9]%
+\>[9]{}\HSCon{Expr}\ \mathbf{:}\ \HSCon{Set}{}\<[E]%
+\\
+\>[B]{}\hsindent{3}{}\<[3]%
+\>[3]{}{\HSKeyword{alg}}\;{}\<[9]%
+\>[9]{}\HSVar{eval}\ \mathbf{:}\ \HSCon{Expr}\HSSym{\to} \HSCon{Int}{}\<[E]%
+\\
+\>[B]{}{\HSKeyword{end}}{}\<[E]%
+\ColumnHook
+\end{hscode}\resethooks
+
+\noindent
+To give cases for \ensuremath{\HSCon{Expr}} and \ensuremath{\HSVar{eval}}, we define modules that inhabit the \ensuremath{\HSCon{Eval}}
+signature. 
+
+\begin{hscode}\SaveRestoreHook
+\column{B}{@{}>{\hspre}l<{\hspost}@{}}%
+\column{3}{@{}>{\hspre}l<{\hspost}@{}}%
+\column{9}{@{}>{\hspre}l<{\hspost}@{}}%
+\column{E}{@{}>{\hspre}l<{\hspost}@{}}%
+\>[B]{}\HSKeyword{module}\;\HSCon{Lit}\ \mathbf{:}\ \HSCon{Eval}\;\HSKeyword{where}{}\<[E]%
+\\
+\>[B]{}\hsindent{3}{}\<[3]%
+\>[3]{}{\HSKeyword{cons}}\;{}\<[9]%
+\>[9]{}\HSCon{Lit}\ \mathbf{:}\ \HSCon{Int}\HSSym{\to} \HSCon{Expr}{}\<[E]%
+\\
+\>[B]{}\hsindent{3}{}\<[3]%
+\>[3]{}\HSKeyword{case}\;{}\<[9]%
+\>[9]{}\HSVar{eval}\;\HSSpecial{(}\HSCon{Lit}\;\HSVar{x}\HSSpecial{)}\HSSym{\mapsto}\HSVar{x}{}\<[E]%
+\\
+\>[B]{}{\HSKeyword{end}}{}\<[E]%
+\\[\blanklineskip]%
+\>[B]{}\HSKeyword{module}\;\HSCon{Add}\ \mathbf{:}\ \HSCon{Eval}\;\HSKeyword{where}{}\<[E]%
+\\
+\>[B]{}\hsindent{3}{}\<[3]%
+\>[3]{}{\HSKeyword{cons}}\;{}\<[9]%
+\>[9]{}\HSCon{Add}\ \mathbf{:}\ \HSCon{Expr}\HSSym{\to} \HSCon{Expr}\HSSym{\to} \HSCon{Expr}{}\<[E]%
+\\
+\>[B]{}\hsindent{3}{}\<[3]%
+\>[3]{}\HSKeyword{case}\;{}\<[9]%
+\>[9]{}\HSVar{eval}\;\HSSpecial{(}\HSCon{Add}\;\HSVar{x}\;\HSVar{y}\HSSpecial{)}\HSSym{\mapsto}\HSVar{x}\HSSym{+}\HSVar{y}{}\<[E]%
+\\
+\>[B]{}{\HSKeyword{end}}{}\<[E]%
+\ColumnHook
+\end{hscode}\resethooks
+
+\noindent
+The \ensuremath{{\HSKeyword{cons}}} keyword declares a new constructor for an extensible data type, where
+we declare any arguments by giving a GADT-style type signature. We declare
+clauses for functions that match on an extensible type using the \ensuremath{\HSKeyword{case}}
+keyword. For every newly declared constructor of an extensible data type, we
+have an obligation to supply exactly one corresponding clause \emph{for every
+  extensible function that matches on that type}. \strachey{} has a coverage
+checker that checks whether modules indeed contain all necessary definitions, in
+order to rule out partiality resulting from missing patterns. For example,
+omitting the \ensuremath{\HSVar{eval}} case from either the module \ensuremath{\HSCon{Lit}} or \ensuremath{\HSCon{Add}} above will result
+in a static error.  Coverage is checked locally in modules, and preserved when
+composing signature instances.
+
+In the definition of \ensuremath{\HSVar{eval}} in the module \ensuremath{\HSCon{Add}}, we see the implications of
+defining function clauses as algebras. We do not have direct control over
+recursive calls to \ensuremath{\HSVar{eval}}. Instead, in \ensuremath{\HSKeyword{case}} declarations, any recursive
+arguments to the matched constructor are replaced with the result of recursively
+invoking \ensuremath{\HSVar{eval}} on them. In this case, this implies that \ensuremath{\HSVar{x}} and \ensuremath{\HSVar{y}} do not
+refer to expressions. Rather, if we invoke \ensuremath{\HSVar{eval}} on the expression \ensuremath{\HSCon{Add}\;\HSVar{e1}\;\HSVar{e2}},
+in the corresponding \ensuremath{\HSKeyword{case}} declaration, \ensuremath{\HSVar{x}} and \ensuremath{\HSVar{y}} are bound to \ensuremath{\HSVar{eval}\;\HSVar{e1}} and
+\ensuremath{\HSVar{eval}\;\HSVar{e2}} respectively. We could encode the same example in Haskell as follows,
+but to use \ensuremath{\HSVar{eval}} on concrete expressions additionally requires explicit
+definitions of a type level fixpoint and fold operation. In \strachey{}, this
+encoding layer is hidden by the language.
+
+\begin{hscode}\SaveRestoreHook
+\column{B}{@{}>{\hspre}l<{\hspost}@{}}%
+\column{E}{@{}>{\hspre}l<{\hspost}@{}}%
+\>[B]{}\HSKeyword{data}\;\HSCon{Add}\;\HSVar{e}\HSSym{\mathrel{=}}\HSCon{Add}\;\HSVar{e}\;\HSVar{e}{}\<[E]%
+\\
+\>[B]{}\HSVar{eval}\HSSym{::}\HSCon{Add}\;\HSCon{Int}\HSSym{\to} \HSCon{Int}{}\<[E]%
+\\
+\>[B]{}\HSVar{eval}\;\HSSpecial{(}\HSCon{Add}\;\HSVar{x}\;\HSVar{y}\HSSpecial{)}\HSSym{\mathrel{=}}\HSVar{x}\HSSym{+}\HSVar{y}{}\<[E]%
+\ColumnHook
+\end{hscode}\resethooks
+
+To compose signature instances we merely have to import them from the same
+location.
+
+\begin{hscode}\SaveRestoreHook
+\column{B}{@{}>{\hspre}l<{\hspost}@{}}%
+\column{3}{@{}>{\hspre}l<{\hspost}@{}}%
+\column{E}{@{}>{\hspre}l<{\hspost}@{}}%
+\>[B]{}\HSKeyword{module}\;\HSCon{Program}\;\HSKeyword{where}{}\<[E]%
+\\
+\>[B]{}\hsindent{3}{}\<[3]%
+\>[3]{}\HSKeyword{import}\;\HSCon{Lit}\HSSpecial{,}\HSCon{Add}{}\<[E]%
+\\[\blanklineskip]%
+\>[B]{}\hsindent{3}{}\<[3]%
+\>[3]{}\HSComment{ -\! - Evaluates to 3 }{}\<[E]%
+\\
+\>[B]{}\hsindent{3}{}\<[3]%
+\>[3]{}{\HSKeyword{fun}}\;\HSVar{test}\ \mathbf{:}\ \HSCon{Int}\HSSym{\mathrel{=}}\HSVar{eval}\;\HSSpecial{(}\HSCon{Add}\;\HSSpecial{(}\HSCon{Lit}\;\HSNumeral{1}\HSSpecial{)}\;\HSSpecial{(}\HSCon{Lit}\;\HSNumeral{2}\HSSpecial{)}\HSSpecial{)}{}\<[E]%
+\\
+\>[B]{}{\HSKeyword{end}}{}\<[E]%
+\ColumnHook
+\end{hscode}\resethooks
+
+\noindent
+By importing both the \ensuremath{\HSCon{Lit}} and \ensuremath{\HSCon{Add}} modules, the names \ensuremath{\HSCon{Expr}} and \ensuremath{\HSVar{eval}} will
+refer to the composition of the constructors/clauses defined in the imported
+signature instances. Here, this means that we can construct and evaluate
+expressions that consist of both literals and addition. Furthermore, to add a
+new constructor into the mix, we can simply define a new module that
+instantiates the \ensuremath{\HSCon{Eval}} signature, and add it to the import list.
+
+To define an alternative interpretation for \ensuremath{\HSCon{Expr}}, we declare a new
+signature. In order to reference the \ensuremath{{\HSKeyword{sort}}} declaration for \ensuremath{\HSCon{Expr}}, we must
+import the \ensuremath{\HSCon{Eval}} signature.
+
+\begin{hscode}\SaveRestoreHook
+\column{B}{@{}>{\hspre}l<{\hspost}@{}}%
+\column{3}{@{}>{\hspre}l<{\hspost}@{}}%
+\column{E}{@{}>{\hspre}l<{\hspost}@{}}%
+\>[B]{}{\HSKeyword{signature}}\;\HSCon{Pretty}\;\HSKeyword{where}{}\<[E]%
+\\
+\>[B]{}\hsindent{3}{}\<[3]%
+\>[3]{}\HSKeyword{import}\;\HSCon{Eval}\HSComment{ -\! - brings 'Expr' into scope}{}\<[E]%
+\\[\blanklineskip]%
+\>[B]{}\hsindent{3}{}\<[3]%
+\>[3]{}{\HSKeyword{alg}}\;\HSVar{pretty}\ \mathbf{:}\ \HSCon{Expr}\HSSym{\to} \HSCon{String}{}\<[E]%
+\\
+\>[B]{}{\HSKeyword{end}}{}\<[E]%
+\ColumnHook
+\end{hscode}\resethooks
+
+\noindent
+We declare cases for \ensuremath{\HSVar{pretty}} by instantiating the newly defined signature,
+adding \ensuremath{\HSKeyword{import}} declarations to bring relevant \ensuremath{{\HSKeyword{cons}}} declaration into scope.
+
+\begin{hscode}\SaveRestoreHook
+\column{B}{@{}>{\hspre}l<{\hspost}@{}}%
+\column{3}{@{}>{\hspre}l<{\hspost}@{}}%
+\column{E}{@{}>{\hspre}l<{\hspost}@{}}%
+\>[B]{}\HSKeyword{module}\;\HSCon{PrettyAdd}\ \mathbf{:}\ \HSCon{Pretty}\;\HSKeyword{where}{}\<[E]%
+\\
+\>[B]{}\hsindent{3}{}\<[3]%
+\>[3]{}\HSKeyword{import}\;\HSCon{Add}\HSComment{ -\! - brings 'Add' into scope}{}\<[E]%
+\\[\blanklineskip]%
+\>[B]{}\hsindent{3}{}\<[3]%
+\>[3]{}\HSKeyword{case}\;\HSVar{pretty}\;\HSSpecial{(}\HSCon{Add}\;\HSVar{s1}\;\HSVar{s2}\HSSpecial{)}\HSSym{\mathrel{=}}\HSVar{s1}\HSSym{\plus} \HSString{``~+~\char34 }\HSSym{\plus} \HSVar{s2}{}\<[E]%
+\\
+\>[B]{}{\HSKeyword{end}}{}\<[E]%
+\ColumnHook
+\end{hscode}\resethooks
+
+\noindent
+It is possible for two modules to be \emph{conflicting}, in the sense that they
+both define an algebra case for the same constructor. This would happen, for
+example, if we were to define another module \ensuremath{\HSCon{PrettyAdd2}} that also implements
+\ensuremath{\HSVar{pretty}} for the constructor \ensuremath{\HSCon{Add}}. Importing two conflicting modules should
+result in a type error, since the semantics of their composition is unclear. 
+\section{Defining Reusable Language Components in \strachey{}}
+\label{sec:components}
+
+In this section, we demonstrate how to use the features of \strachey{}
+introduced in the previous section to define reusable language components. We
+work towards defining a reusable component for function abstraction, which can
+be composed with other constructs, and for which we can define alternative
+implementations. As an example, we will show that we can use the same component
+defining functions with both a call-by-value and call-by-name strategy.
+
+\subsection{A Signature for Reusable Components}
+
+The first step is to define an appropriate module signature. We follow the same
+setup as for the \ensuremath{\HSCon{Eval}} signature in
+\cref{sec:composable-types-and-functions}. That is, we declare an extensible
+sort \ensuremath{\HSCon{Expr}}, together with an algebra \ensuremath{\HSVar{eval}} that consumes values of type
+\ensuremath{\HSCon{Expr}}. The result of evaluation is a \ensuremath{\HSCon{Value}}, with potential side effects
+\ensuremath{\HSVar{e}}. The side effects are still abstract in the signature definition. The effect
+variable \ensuremath{\HSVar{e}} is universally quantified, but instantiations of the signature
+\ensuremath{\HSCon{Eval}} can impose additional constraints depending on which effects they need to
+implement \ensuremath{\HSVar{eval}}. As a result, when invoking \ensuremath{\HSVar{eval}}, \ensuremath{\HSVar{e}} can be instantiated
+with any effect row that satisfies all the constraints imposed by the instances
+of \ensuremath{\HSCon{Eval}} that are in scope.
+
+\begin{hscode}\SaveRestoreHook
+\column{B}{@{}>{\hspre}l<{\hspost}@{}}%
+\column{3}{@{}>{\hspre}l<{\hspost}@{}}%
+\column{9}{@{}>{\hspre}l<{\hspost}@{}}%
+\column{15}{@{}>{\hspre}l<{\hspost}@{}}%
+\column{E}{@{}>{\hspre}l<{\hspost}@{}}%
+\>[B]{}{\HSKeyword{signature}}\;\HSCon{Eval}\;\HSKeyword{where}{}\<[E]%
+\\
+\>[B]{}\hsindent{3}{}\<[3]%
+\>[3]{}{\HSKeyword{sort}}\;{}\<[9]%
+\>[9]{}\HSCon{Expr}{}\<[15]%
+\>[15]{}\ \mathbf{:}\ \HSCon{Set}{}\<[E]%
+\\
+\>[B]{}\hsindent{3}{}\<[3]%
+\>[3]{}{\HSKeyword{alg}}\;{}\<[9]%
+\>[9]{}\HSVar{eval}{}\<[15]%
+\>[15]{}\ \mathbf{:}\ \HSCon{Expr}\HSSym{\to} \HSSpecial{\HSSym{\{\mskip1.5mu} }\HSSpecial{\HSSym{[\mskip1.5mu} }\HSVar{e}\HSSpecial{\HSSym{\mskip1.5mu]}}\;\HSCon{Value}\HSSpecial{\HSSym{\mskip1.5mu\}}}{}\<[E]%
+\\
+\>[B]{}{\HSKeyword{end}}{}\<[E]%
+\ColumnHook
+\end{hscode}\resethooks
+
+\noindent
+We will consider the precise definition of \ensuremath{\HSCon{Value}} later in
+\cref{sec:functions-as-effect}. For now, it is enough to know that it has a
+constructor \ensuremath{\HSCon{Num}\ \mathbf{:}\ \HSCon{Int}\HSSym{\to} \HSCon{Value}} that constructs a value from an integer
+literal.
+
+\subsection{A Language Component for Arithmetic Expressions}
+
+Let us start by defining instances of the \ensuremath{\HSCon{Eval}} signature for the expression
+language from the introduction. First, we define a module for integer literals. 
+
+\begin{hscode}\SaveRestoreHook
+\column{B}{@{}>{\hspre}l<{\hspost}@{}}%
+\column{3}{@{}>{\hspre}l<{\hspost}@{}}%
+\column{9}{@{}>{\hspre}l<{\hspost}@{}}%
+\column{E}{@{}>{\hspre}l<{\hspost}@{}}%
+\>[B]{}\HSKeyword{module}\;\HSCon{Lit}\ \mathbf{:}\ \HSCon{Eval}\;\HSKeyword{where}{}\<[E]%
+\\
+\>[B]{}\hsindent{3}{}\<[3]%
+\>[3]{}{\HSKeyword{cons}}\;{}\<[9]%
+\>[9]{}\HSCon{Lit}\ \mathbf{:}\ \HSCon{Int}\HSSym{\to} \HSCon{Expr}{}\<[E]%
+\\
+\>[B]{}\hsindent{3}{}\<[3]%
+\>[3]{}\HSKeyword{case}\;{}\<[9]%
+\>[9]{}\HSVar{eval}\;\HSSpecial{(}\HSCon{Lit}\;\HSVar{n}\HSSpecial{)}\HSSym{\mathrel{=}}\HSSpecial{\HSSym{\{\mskip1.5mu} }\HSCon{Num}\;\HSVar{n}\HSSpecial{\HSSym{\mskip1.5mu\}}}{}\<[E]%
+\\
+\>[B]{}{\HSKeyword{end}}{}\<[E]%
+\ColumnHook
+\end{hscode}\resethooks
+
+\noindent
+The corresponding clause for \ensuremath{\HSVar{eval}} simply returns the value \ensuremath{\HSVar{n}} stored inside
+the constructor. Because the interpreter expects that we return a suspended
+computation, we must wrap \ensuremath{\HSVar{n}} in a suspension, even though it is a pure
+value. Enacting this suspension, however, does not trigger any side effects, and
+as such importing \ensuremath{\HSCon{Lit}} imposes no constraints on the effect row \ensuremath{\HSVar{e}}.
+
+Next, we define a module \ensuremath{\HSCon{Div}} that implements integer division. 
+
+\begin{hscode}\SaveRestoreHook
+\column{B}{@{}>{\hspre}l<{\hspost}@{}}%
+\column{3}{@{}>{\hspre}l<{\hspost}@{}}%
+\column{9}{@{}>{\hspre}l<{\hspost}@{}}%
+\column{E}{@{}>{\hspre}l<{\hspost}@{}}%
+\>[B]{}\HSKeyword{module}\;\HSCon{Div}\ \mathbf{:}\ \HSCon{Eval}\;\HSKeyword{where}{}\<[E]%
+\\
+\>[B]{}\hsindent{3}{}\<[3]%
+\>[3]{}{\HSKeyword{cons}}\;{}\<[9]%
+\>[9]{}\HSCon{Div}\ \mathbf{:}\ \HSCon{Expr}\HSSym{\to} \HSCon{Expr}\HSSym{\to} \HSCon{Expr}{}\<[E]%
+\\
+\>[B]{}\hsindent{3}{}\<[3]%
+\>[3]{}\HSKeyword{case}\;{}\<[9]%
+\>[9]{}\HSVar{eval}\;\HSSpecial{(}\HSCon{Div}\;\HSVar{m1}\;\HSVar{m2}\HSSpecial{)}\HSSym{\mathrel{=}}\HSSpecial{\HSSym{\{\mskip1.5mu} }\HSVar{safeDiv}\;\HSVar{m1}!\ \HSVar{m2}!\ \HSSpecial{\HSSym{\mskip1.5mu\}}}{}\<[E]%
+\ColumnHook
+\end{hscode}\resethooks
+
+\noindent
+Looking at the implementation of \ensuremath{\HSVar{eval}} in the module \ensuremath{\HSCon{Div}} we notice two
+things. First, the recursive arguments to \ensuremath{\HSCon{Div}} have been replaced by the result
+of calling \ensuremath{\HSVar{eval}} on them, meaning that \ensuremath{\HSVar{m1}} and \ensuremath{\HSVar{m2}} are now
+\emph{computations} with type \ensuremath{\HSSpecial{\HSSym{\{\mskip1.5mu} }\HSSpecial{\HSSym{[\mskip1.5mu} }\HSVar{e}\HSSpecial{\HSSym{\mskip1.5mu]}}\;\HSCon{Int}\HSSpecial{\HSSym{\mskip1.5mu\}}}}, and hence we must use enactment
+before we can pass the result to \ensuremath{\HSVar{safeDiv}}. Enacting these computations may
+trigger side effects, so the order in which sub-expressions are evaluated
+determines in which order these side effects occur in the case that expressions
+contain more than one enactment. Sub-expressions in \strachey{} are evaluated
+from left to right. Second, the implementation uses the function \ensuremath{\HSVar{safeDiv}},
+defined in \cref{sec:effects-and-handlers}, which guards against errors
+resulting from division by zero.
+
+The function \ensuremath{\HSVar{safeDiv}} is annotated with the \ensuremath{\HSCon{Fail}} effect, which supplies the
+\ensuremath{{\STOperation{fail}}} operation. By invoking \ensuremath{\HSVar{safeDiv}} in the defintion of \ensuremath{\HSVar{eval}}, which from
+the definition of \ensuremath{\HSCon{Eval}} has type \ensuremath{\HSCon{Expr}\HSSym{\to} \HSSpecial{\HSSym{\{\mskip1.5mu} }\HSSpecial{\HSSym{[\mskip1.5mu} }\HSVar{e}\HSSpecial{\HSSym{\mskip1.5mu]}}\;\HSCon{Int}\HSSpecial{\HSSym{\mskip1.5mu\}}}}, we are imposing a
+constraint on the effect row \ensuremath{\HSVar{e}} that it contains at least the \ensuremath{\HSCon{Fail}} effect. In
+other words, whenever we import the module \ensuremath{\HSCon{Div}} we have to make sure that we
+instantiate \ensuremath{\HSVar{e}} with a row that has \ensuremath{\HSCon{Fail}} in it. Consequently, before we can
+extract a value from any instantiation of \ensuremath{\HSCon{Eval}} that includes \ensuremath{\HSCon{Div}}, we must
+apply a handler for the \ensuremath{\HSCon{Fail}} effect.
+
+Since the interpreter now returns a \ensuremath{\HSCon{Value}} instead of an \ensuremath{\HSCon{Int}}, we must modify
+\ensuremath{\HSVar{safeDiv}} accordingly. In practice this means that we must check if its
+arguments are constructed using the \ensuremath{\HSCon{Num}} constructor before further processing
+the input. Since \ensuremath{\HSVar{safeDiv}} already has \ensuremath{\HSCon{Fail}} as a side effect, we can invoke
+the \ensuremath{{\STOperation{fail}}} operation in case an argument was constructed using a different
+constructor than \ensuremath{\HSCon{Num}}.
+
+\subsection{Implementing Functions as a Reusable Effect}
+\label{sec:functions-as-effect}
+
+\strachey{}'s effect system can describe much more sophisticated effects than
+\ensuremath{\HSCon{Fail}}. The effect system permits fine-grained control over the semantics of
+operations that affect a program's control flow, even in the presence of other
+effects. To illustrate its expressiveness, we will now consider how to define
+function abstraction as a reusable effect, and implement two different handlers
+for this effect corresponding to a call-by-value and call-by-name
+semantics. Implementing function abstraction as an effect is especially
+challenging since execution of the function body is deferred until the function
+is applied. From a handler's perspective, this means that the function body and
+its side effect have to be postponed until a point beyond its own control, a
+pattern that is very difficult to capture using traditional algebraic effects.
+
+We will see shortly how \strachey{} addresses this challenge. A key part of the
+solution is the ability to define \emph{higher-order operations}: operations
+with arguments that are themselves effectful computations, leaving it up to the
+operation's handler to enact the side effects of higher-order arguments. The
+\ensuremath{\HSCon{Fun}} effect, which implements function abstraction, has several higher-order
+operations.
+
+\noindent
+\begin{hscode}\SaveRestoreHook
+\column{B}{@{}>{\hspre}l<{\hspost}@{}}%
+\column{4}{@{}>{\hspre}l<{\hspost}@{}}%
+\column{11}{@{}>{\hspre}l<{\hspost}@{}}%
+\column{21}{@{}>{\hspre}l<{\hspost}@{}}%
+\column{41}{@{}>{\hspre}l<{\hspost}@{}}%
+\column{E}{@{}>{\hspre}l<{\hspost}@{}}%
+\>[B]{}{\HSKeyword{effect}}\;\HSCon{Fun}\;\HSKeyword{where}{}\<[E]%
+\\
+\>[B]{}\HSSym{\mid} {}\<[4]%
+\>[4]{}{\STOperation{lam}}{}\<[11]%
+\>[11]{}\ \mathbf{:}\ \HSCon{String}{}\<[21]%
+\>[21]{}\HSSym{\to} \HSSpecial{\HSSym{\{\mskip1.5mu} }\HSSpecial{\HSSym{[\mskip1.5mu} }\HSCon{Fun}\HSSpecial{\HSSym{\mskip1.5mu]}}\;\HSCon{Value}\HSSpecial{\HSSym{\mskip1.5mu\}}}{}\<[41]%
+\>[41]{}\HSSym{\to} \HSSpecial{\HSSym{\{\mskip1.5mu} }\HSSpecial{\HSSym{[\mskip1.5mu} }\HSCon{Fun}\HSSpecial{\HSSym{\mskip1.5mu]}}\;\HSCon{Value}\HSSpecial{\HSSym{\mskip1.5mu\}}}{}\<[E]%
+\\
+\>[B]{}\HSSym{\mid} {}\<[4]%
+\>[4]{}{\STOperation{app}}{}\<[11]%
+\>[11]{}\ \mathbf{:}\ \HSCon{Value}{}\<[21]%
+\>[21]{}\HSSym{\to} \HSCon{Value}{}\<[41]%
+\>[41]{}\HSSym{\to} \HSSpecial{\HSSym{\{\mskip1.5mu} }\HSSpecial{\HSSym{[\mskip1.5mu} }\HSCon{Fun}\HSSpecial{\HSSym{\mskip1.5mu]}}\;\HSCon{Value}\HSSpecial{\HSSym{\mskip1.5mu\}}}{}\<[E]%
+\\
+\>[B]{}\HSSym{\mid} {}\<[4]%
+\>[4]{}{\STOperation{var}}{}\<[11]%
+\>[11]{}\ \mathbf{:}\ \HSCon{String}{}\<[41]%
+\>[41]{}\HSSym{\to} \HSSpecial{\HSSym{\{\mskip1.5mu} }\HSSpecial{\HSSym{[\mskip1.5mu} }\HSCon{Fun}\HSSpecial{\HSSym{\mskip1.5mu]}}\;\HSCon{Value}\HSSpecial{\HSSym{\mskip1.5mu\}}}{}\<[E]%
+\\
+\>[B]{}\HSSym{\mid} {}\<[4]%
+\>[4]{}{\STOperation{thunk}}{}\<[11]%
+\>[11]{}\ \mathbf{:}\ \HSSpecial{\HSSym{\{\mskip1.5mu} }\HSSpecial{\HSSym{[\mskip1.5mu} }\HSCon{Fun}\HSSpecial{\HSSym{\mskip1.5mu]}}\;\HSCon{Value}\HSSpecial{\HSSym{\mskip1.5mu\}}}{}\<[41]%
+\>[41]{}\HSSym{\to} \HSSpecial{\HSSym{\{\mskip1.5mu} }\HSSpecial{\HSSym{[\mskip1.5mu} }\HSCon{Fun}\HSSpecial{\HSSym{\mskip1.5mu]}}\;\HSCon{Value}\HSSpecial{\HSSym{\mskip1.5mu\}}}{}\<[E]%
+\ColumnHook
+\end{hscode}\resethooks
+
+\noindent
+The \ensuremath{\HSCon{Fun}} effect defines four operations, three of which correspond to the usual
+constructs of the $\lambda$-calculus. The \ensuremath{{\STOperation{thunk}}} operation has no counterpart
+in the $\lambda$-calculus, and postpones evaluation of a computation. It is
+necessary for evaluation to support both a call-by-value and call-by-name
+evaluation strategy
+
+When looking at the \ensuremath{{\STOperation{lam}}} and \ensuremath{{\STOperation{thunk}}} operations, we find that they both have
+parameters annotated with the \ensuremath{\HSCon{Fun}} effect. This annotation indicates that they
+are higher-order parameters. By allowing higher-order parameters to
+operations, effects in \strachey{} do not correspond directly to algebraic
+effects. Instead, to give as semantics to effects in \strachey{}, we must use a
+flavor of effects that permits higher-order syntax, such as \emph{Latent
+  Effects}~\cite{DBLP:conf/aplas/BergSPW21}.
+
+
+As a result, any effects of the computations
+stored in a closure or thunk are postponed, leaving it up to the handler to
+decide when these take place.
+
+\paragraph{Using the \ensuremath{\HSCon{Fun}} effect}
+
+To build a language with function abstractions that uses the \ensuremath{\HSCon{Fun}} effect, we
+give an instance of the \ensuremath{\HSCon{Eval}} signature that defines the constructors \ensuremath{\HSCon{Abs}},
+\ensuremath{\HSCon{App}}, and \ensuremath{\HSCon{Var}} for \ensuremath{\HSCon{Expr}}. We extend \ensuremath{\HSVar{eval}} for these constructors by mapping
+onto the corresponding operation.
+
+\noindent
+\begin{hscode}\SaveRestoreHook
+\column{B}{@{}>{\hspre}l<{\hspost}@{}}%
+\column{3}{@{}>{\hspre}l<{\hspost}@{}}%
+\column{9}{@{}>{\hspre}l<{\hspost}@{}}%
+\column{23}{@{}>{\hspre}l<{\hspost}@{}}%
+\column{27}{@{}>{\hspre}l<{\hspost}@{}}%
+\column{32}{@{}>{\hspre}l<{\hspost}@{}}%
+\column{E}{@{}>{\hspre}l<{\hspost}@{}}%
+\>[B]{}\HSKeyword{module}\;\HSCon{Lambda}\ \mathbf{:}\ \HSCon{Eval}\;\HSKeyword{where}{}\<[E]%
+\\
+\>[B]{}\hsindent{3}{}\<[3]%
+\>[3]{}{\HSKeyword{cons}}\;{}\<[9]%
+\>[9]{}\HSCon{Abs}\ \mathbf{:}\ \HSCon{String}{}\<[23]%
+\>[23]{}\HSSym{\to} \HSCon{Expr}{}\<[32]%
+\>[32]{}\HSSym{\to} \HSCon{Expr}{}\<[E]%
+\\
+\>[B]{}\hsindent{3}{}\<[3]%
+\>[3]{}\HSSym{\mid} {}\<[9]%
+\>[9]{}\HSCon{App}\ \mathbf{:}\ \HSCon{Expr}{}\<[23]%
+\>[23]{}\HSSym{\to} \HSCon{Expr}{}\<[32]%
+\>[32]{}\HSSym{\to} \HSCon{Expr}{}\<[E]%
+\\
+\>[B]{}\hsindent{3}{}\<[3]%
+\>[3]{}\HSSym{\mid} {}\<[9]%
+\>[9]{}\HSCon{Var}\ \mathbf{:}\ \HSCon{String}{}\<[32]%
+\>[32]{}\HSSym{\to} \HSCon{Expr}{}\<[E]%
+\\[\blanklineskip]%
+\>[B]{}\hsindent{3}{}\<[3]%
+\>[3]{}\HSKeyword{case}\;{}\<[9]%
+\>[9]{}\HSVar{eval}\;\HSSpecial{(}\HSCon{Abs}\;\HSVar{x}\;\HSVar{m}\HSSpecial{)}{}\<[27]%
+\>[27]{}\HSSym{\mathrel{=}}{\STOperation{lam}}\;\HSVar{x}\;\HSVar{m}{}\<[E]%
+\\
+\>[B]{}\hsindent{3}{}\<[3]%
+\>[3]{}\HSSym{\mid} {}\<[9]%
+\>[9]{}\HSVar{eval}\;\HSSpecial{(}\HSCon{App}\;\HSVar{m1}\;\HSVar{m2}\HSSpecial{)}{}\<[27]%
+\>[27]{}\HSSym{\mathrel{=}}{\STOperation{app}}\;\HSVar{m1}!\ \HSSpecial{(}{\STOperation{thunk}}\;\HSVar{m2}\HSSpecial{)}!\ {}\<[E]%
+\\
+\>[B]{}\hsindent{3}{}\<[3]%
+\>[3]{}\HSSym{\mid} {}\<[9]%
+\>[9]{}\HSVar{eval}\;\HSSpecial{(}\HSCon{Var}\;\HSVar{x}\HSSpecial{)}{}\<[27]%
+\>[27]{}\HSSym{\mathrel{=}}{\STOperation{var}}\;\HSVar{x}{}\<[E]%
+\\
+\>[B]{}{\HSKeyword{end}}{}\<[E]%
+\ColumnHook
+\end{hscode}\resethooks
+
+\noindent
+Crucially, in the case for \ensuremath{\HSCon{Abs}} we pass the effect-annotated body \ensuremath{\HSVar{m}}, with
+type \ensuremath{\HSSpecial{\HSSym{\{\mskip1.5mu} }\HSSpecial{\HSSym{[\mskip1.5mu} }\HSVar{e}\HSSpecial{\HSSym{\mskip1.5mu]}}\;\HSCon{Value}\HSSpecial{\HSSym{\mskip1.5mu\}}}}, to the \ensuremath{{\STOperation{lam}}} operation directly without extracting a pure
+value first. This prevents any effects in the body of a lambda from being
+enacted at the definition site, and instead leaves the decision of when these
+effects should take place to the used handler for the \ensuremath{\HSCon{Fun}} effect. Similarly,
+in the case for \ensuremath{\HSCon{App}}, we pass the function argument \ensuremath{\HSVar{m2}} to the \ensuremath{{\STOperation{thunk}}}
+operation directly, postponing any side effects until we force the constructed
+thunk. The precise moment at which we will force the thunk constructed for
+function arguments will depend on whether we employ a call-by-value or
+call-by-name strategy. We must, however, enact the side effects of evaluating
+the function itself (i.e., \ensuremath{\HSVar{m1}}), because the \ensuremath{{\STOperation{app}}} operation expects its
+arguments to be a pure value.
+
+We implement call-by-value and call-by-name handlers for \ensuremath{\HSCon{Fun}} in a new module,
+which also defines the type of values, \ensuremath{\HSCon{Value}}, for our language. To keep the
+exposition simple, \ensuremath{\HSCon{Value}} is not an extensible \ensuremath{{\HSKeyword{sort}}}, but it is
+possible to do so in \strachey{}.
+
+Values in this language are either numbers (\ensuremath{\HSCon{Num}}), function closures (\ensuremath{\HSCon{Clo}}),
+or thunked computations (\ensuremath{\HSCon{Thunk}}). We define the type of values together in the
+same module as the handler(s) for the \ensuremath{\HSCon{Fun}} effect. This module is parameterized
+over an effect row \ensuremath{\HSVar{e}}, that denotes the \emph{remaining effects} that are left
+after handling the \ensuremath{\HSCon{Fun}} effect. In this case, \ensuremath{\HSVar{e}} is a module parameter to
+express that the remaining effects in the handlers that we will define coincide
+with the effect annotations of the computations stored in the \ensuremath{\HSCon{Clo}} and \ensuremath{\HSCon{Thunk}}
+constructors, allowing us to run these computations in the handler.
+
+\begin{hscode}\SaveRestoreHook
+\column{B}{@{}>{\hspre}l<{\hspost}@{}}%
+\column{3}{@{}>{\hspre}l<{\hspost}@{}}%
+\column{15}{@{}>{\hspre}c<{\hspost}@{}}%
+\column{15E}{@{}l@{}}%
+\column{18}{@{}>{\hspre}l<{\hspost}@{}}%
+\column{E}{@{}>{\hspre}l<{\hspost}@{}}%
+\>[B]{}\HSKeyword{module}\;\HSCon{HLambda}\;\HSSpecial{(}\HSVar{e}\ \mathbf{:}\ \HSCon{Effects}\HSSpecial{)}\;\HSKeyword{where}{}\<[E]%
+\\[\blanklineskip]%
+\>[B]{}\hsindent{3}{}\<[3]%
+\>[3]{}\HSKeyword{import}\;\HSCon{Fun}{}\<[E]%
+\\[\blanklineskip]%
+\>[B]{}\hsindent{3}{}\<[3]%
+\>[3]{}\HSKeyword{type}\;\HSCon{Env}{}\<[15]%
+\>[15]{}\HSSym{\mathrel{=}}{}\<[15E]%
+\>[18]{}\HSCon{List}\;\HSSpecial{(}\HSCon{String}\HSSym{*}\HSCon{Value}\HSSpecial{)}{}\<[E]%
+\\
+\>[B]{}\hsindent{3}{}\<[3]%
+\>[3]{}\HSKeyword{data}\;\HSCon{Value}{}\<[15]%
+\>[15]{}\HSSym{\mathrel{=}}{}\<[15E]%
+\>[18]{}\HSCon{Num}\;\HSCon{Int}{}\<[E]%
+\\
+\>[15]{}\HSSym{\mid} {}\<[15E]%
+\>[18]{}\HSCon{Clo}\;\HSCon{String}\;\HSSpecial{(}\HSCon{Env}\HSSym{\to} \HSSpecial{\HSSym{\{\mskip1.5mu} }\HSSpecial{\HSSym{[\mskip1.5mu} }\HSCon{Fail}\HSSym{|}\HSVar{e}\HSSpecial{\HSSym{\mskip1.5mu]}}\;\HSCon{Value}\HSSpecial{\HSSym{\mskip1.5mu\}}}\HSSpecial{)}\;\HSCon{Env}{}\<[E]%
+\\
+\>[15]{}\HSSym{\mid} {}\<[15E]%
+\>[18]{}\HSCon{Thunk}\;\HSSpecial{(}\HSSpecial{\HSSym{\{\mskip1.5mu} }\HSSpecial{\HSSym{[\mskip1.5mu} }\HSCon{Fail}\HSSym{|}\HSVar{e}\HSSpecial{\HSSym{\mskip1.5mu]}}\;\HSCon{Value}\HSSpecial{\HSSym{\mskip1.5mu\}}}\HSSpecial{)}{}\<[E]%
+\\[\blanklineskip]%
+\>[B]{}\hsindent{3}{}\<[3]%
+\>[3]{}\HSComment{ -\! - ... (handlers for the Fun effect) ... }{}\<[E]%
+\\
+\>[B]{}{\HSKeyword{end}}{}\<[E]%
+\ColumnHook
+\end{hscode}\resethooks
+ 
+\paragraph{Call-by-value} 
+
+\begin{figure}[t!]
+\begin{hscode}\SaveRestoreHook
+\column{B}{@{}>{\hspre}l<{\hspost}@{}}%
+\column{4}{@{}>{\hspre}l<{\hspost}@{}}%
+\column{15}{@{}>{\hspre}c<{\hspost}@{}}%
+\column{15E}{@{}l@{}}%
+\column{19}{@{}>{\hspre}l<{\hspost}@{}}%
+\column{37}{@{}>{\hspre}l<{\hspost}@{}}%
+\column{41}{@{}>{\hspre}l<{\hspost}@{}}%
+\column{44}{@{}>{\hspre}c<{\hspost}@{}}%
+\column{44E}{@{}l@{}}%
+\column{47}{@{}>{\hspre}l<{\hspost}@{}}%
+\column{E}{@{}>{\hspre}l<{\hspost}@{}}%
+\>[B]{}{\HSKeyword{handler}}\;\HSVar{hCBV}{}\<[15]%
+\>[15]{}\ \mathbf{:}\ {}\<[15E]%
+\>[19]{}\HSSpecial{\HSSym{\{\mskip1.5mu} }\HSSpecial{\HSSym{[\mskip1.5mu} }\HSCon{Fun}\HSSym{|}\HSVar{e}\HSSpecial{\HSSym{\mskip1.5mu]}}\;\HSCon{Value}\HSSpecial{\HSSym{\mskip1.5mu\}}}{}\<[E]%
+\\
+\>[15]{}\HSSym{\to} {}\<[15E]%
+\>[19]{}\HSCon{Env}\HSSym{\to} \HSSpecial{\HSSym{\{\mskip1.5mu} }\HSSpecial{\HSSym{[\mskip1.5mu} }\HSCon{Fail}\HSSym{|}\HSVar{e}\HSSpecial{\HSSym{\mskip1.5mu]}}\;\HSCon{Value}\HSSpecial{\HSSym{\mskip1.5mu\}}}\;\HSKeyword{where}{}\<[E]%
+\\
+\>[B]{}\HSSym{\mid} {}\<[4]%
+\>[4]{}\HSSpecial{(}{\STOperation{lam}}\;\HSVar{x}\;\HSVar{f}\HSSpecial{)}\;{}\<[37]%
+\>[37]{}\HSVar{nv}\;{}\<[41]%
+\>[41]{}\HSVar{k}{}\<[44]%
+\>[44]{}\HSSym{\mapsto}{}\<[44E]%
+\>[47]{}\HSVar{k}\;\HSSpecial{(}\HSCon{Clo}\;\HSVar{x}\;\HSVar{f}\;\HSVar{nv}\HSSpecial{)}\;\HSVar{nv}{}\<[E]%
+\\
+\>[B]{}\HSSym{\mid} {}\<[4]%
+\>[4]{}\HSSpecial{(}{\STOperation{app}}\;\HSSpecial{(}\HSCon{Clo}\;\HSVar{x}\;\HSVar{f}\;\HSVar{nv'}\HSSpecial{)}\;\HSSpecial{(}{\colorbox{highlight}{\ensuremath{\mathit{Thunk}\ t}}}\HSSpecial{)}\HSSpecial{)}\;{}\<[37]%
+\>[37]{}\HSVar{nv}\;{}\<[41]%
+\>[41]{}\HSVar{k}{}\<[44]%
+\>[44]{}\HSSym{\mapsto}{}\<[44E]%
+\>[47]{}\HSVar{k}\;\HSSpecial{(}\HSVar{f}\;\HSSpecial{(}\HSSpecial{(}\HSVar{x}\HSSpecial{,}{\colorbox{highlight}{\ensuremath{t!}}}\HSSpecial{)}\HSSym{::}\HSVar{nv'}\HSSpecial{)}\HSSpecial{)}!\ \HSVar{nv}{}\<[E]%
+\\
+\>[B]{}\HSSym{\mid} {}\<[4]%
+\>[4]{}\HSSpecial{(}{\STOperation{app}}\;\HSSym{\anonymous} \;\HSSym{\anonymous} \HSSpecial{)}\;{}\<[37]%
+\>[37]{}\HSSym{\anonymous} \;{}\<[41]%
+\>[41]{}\HSSym{\anonymous} {}\<[44]%
+\>[44]{}\HSSym{\mapsto}{}\<[44E]%
+\>[47]{}\HSSpecial{\HSSym{\{\mskip1.5mu} }{\STOperation{fail}}!\ \HSSpecial{\HSSym{\mskip1.5mu\}}}{}\<[E]%
+\\
+\>[B]{}\HSSym{\mid} {}\<[4]%
+\>[4]{}\HSSpecial{(}{\STOperation{var}}\;\HSVar{x}\HSSpecial{)}\;{}\<[37]%
+\>[37]{}\HSVar{nv}\;{}\<[41]%
+\>[41]{}\HSVar{k}{}\<[44]%
+\>[44]{}\HSSym{\mapsto}{}\<[44E]%
+\>[47]{}\HSVar{k}\;\HSSpecial{(}\HSVar{lookup}\;\HSVar{nv}\;\HSVar{x}\HSSpecial{)}!\ \HSVar{nv}{}\<[E]%
+\\
+\>[B]{}\HSSym{\mid} {}\<[4]%
+\>[4]{}\HSSpecial{(}{\STOperation{thunk}}\;\HSVar{f}\HSSpecial{)}\;{}\<[37]%
+\>[37]{}\HSVar{nv}\;{}\<[41]%
+\>[41]{}\HSVar{k}{}\<[44]%
+\>[44]{}\HSSym{\mapsto}{}\<[44E]%
+\>[47]{}\HSVar{k}\;\HSSpecial{(}\HSCon{Thunk}\;\HSSpecial{\HSSym{\{\mskip1.5mu} }\HSVar{f}\;\HSVar{nv}\HSSpecial{\HSSym{\mskip1.5mu\}}}\HSSpecial{)}\;\HSVar{nv}{}\<[E]%
+\\
+\>[B]{}\HSSym{\mid} {}\<[4]%
+\>[4]{}{\HSKeyword{return}}\;\HSVar{v}\;{}\<[37]%
+\>[37]{}\HSVar{nv}{}\<[44]%
+\>[44]{}\HSSym{\mapsto}{}\<[44E]%
+\>[47]{}\HSSpecial{\HSSym{\{\mskip1.5mu} }\HSVar{v}\HSSpecial{\HSSym{\mskip1.5mu\}}}{}\<[E]%
+\ColumnHook
+\end{hscode}\resethooks
+\hrule
+\caption{A Handler for the \ensuremath{\HSCon{Fun}} effect, implementing a call-by-value
+  semantics for function arguments. The gray highlights indicate where thunks
+  constructed for function arguments are forced.}
+\label{fig:handler-cbv}
+\end{figure}
+
+We are now ready to define a handler for the \ensuremath{\HSCon{Fun}} effect that implements
+a call-by-value evaluation strategy. \cref{fig:handler-cbv} shows its
+implementation.
+
+The \ensuremath{{\HSKeyword{return}}} case is unremarkable: we simply ignore the environment \ensuremath{\HSVar{nv}} and
+return the value \ensuremath{\HSVar{v}}. The cases for \ensuremath{{\STOperation{lam}}} and \ensuremath{{\STOperation{thunk}}} are similar, as in both
+cases we do not enact the side effects associated with the stored computation
+\ensuremath{\HSVar{f}}, but instead wrap this computation in a \ensuremath{\HSCon{Closure}} or \ensuremath{\HSCon{Thunk}} which is passed
+to the continuation \ensuremath{\HSVar{k}}. For variables, we resolve the identifier \ensuremath{\HSVar{x}} in the
+environment and pass the result to the continuation.
+
+A call-by-value semantics arises from the implementation of the \ensuremath{{\STOperation{app}}} case. The
+highlights (e.g., \ensuremath{{\colorbox{highlight}{\ensuremath{t!}}}}) indicate where the thunk we constructed for the
+function argument in \ensuremath{\HSVar{eval}} is forced. In this case, we force this argument
+thunk immediately when encountering a function application, meaning that any
+side effects of the argument take place \emph{before} we evaluate the function
+body.
+
+\paragraph{Call-by-name} 
+
+\begin{figure}[t]
+\begin{hscode}\SaveRestoreHook
+\column{B}{@{}>{\hspre}l<{\hspost}@{}}%
+\column{4}{@{}>{\hspre}l<{\hspost}@{}}%
+\column{15}{@{}>{\hspre}c<{\hspost}@{}}%
+\column{15E}{@{}l@{}}%
+\column{19}{@{}>{\hspre}l<{\hspost}@{}}%
+\column{27}{@{}>{\hspre}l<{\hspost}@{}}%
+\column{31}{@{}>{\hspre}l<{\hspost}@{}}%
+\column{34}{@{}>{\hspre}c<{\hspost}@{}}%
+\column{34E}{@{}l@{}}%
+\column{37}{@{}>{\hspre}l<{\hspost}@{}}%
+\column{40}{@{}>{\hspre}l<{\hspost}@{}}%
+\column{51}{@{}>{\hspre}c<{\hspost}@{}}%
+\column{51E}{@{}l@{}}%
+\column{54}{@{}>{\hspre}l<{\hspost}@{}}%
+\column{E}{@{}>{\hspre}l<{\hspost}@{}}%
+\>[B]{}{\HSKeyword{handler}}\;\HSVar{hCBN}{}\<[15]%
+\>[15]{}\ \mathbf{:}\ {}\<[15E]%
+\>[19]{}\HSSpecial{\HSSym{\{\mskip1.5mu} }\HSSpecial{\HSSym{[\mskip1.5mu} }\HSCon{Fun}\HSSym{|}\HSVar{e}\HSSpecial{\HSSym{\mskip1.5mu]}}\;\HSCon{Value}\HSSpecial{\HSSym{\mskip1.5mu\}}}{}\<[E]%
+\\
+\>[15]{}\HSSym{\to} {}\<[15E]%
+\>[19]{}\HSCon{Env}\HSSym{\to} \HSSpecial{\HSSym{\{\mskip1.5mu} }\HSSpecial{\HSSym{[\mskip1.5mu} }\HSCon{Fail}\HSSym{|}\HSVar{e}\HSSpecial{\HSSym{\mskip1.5mu]}}\;\HSCon{Value}\HSSpecial{\HSSym{\mskip1.5mu\}}}\;\HSKeyword{where}{}\<[E]%
+\\
+\>[B]{}\HSSym{\mid} {}\<[4]%
+\>[4]{}\HSSpecial{(}{\STOperation{lam}}\;\HSVar{x}\;\HSVar{f}\HSSpecial{)}\;{}\<[27]%
+\>[27]{}\HSVar{nv}\;{}\<[31]%
+\>[31]{}\HSVar{k}{}\<[34]%
+\>[34]{}\HSSym{\mapsto}{}\<[34E]%
+\>[37]{}\HSVar{k}\;\HSSpecial{(}\HSCon{Clo}\;\HSVar{x}\;\HSVar{f}\;\HSVar{nv}\HSSpecial{)}\;\HSVar{nv}{}\<[E]%
+\\
+\>[B]{}\HSSym{\mid} {}\<[4]%
+\>[4]{}\HSSpecial{(}{\STOperation{app}}\;\HSSpecial{(}\HSCon{Clo}\;\HSVar{x}\;\HSVar{f}\;\HSVar{nv'}\HSSpecial{)}\;\HSVar{v}\HSSpecial{)}\;{}\<[27]%
+\>[27]{}\HSVar{nv}\;{}\<[31]%
+\>[31]{}\HSVar{k}{}\<[34]%
+\>[34]{}\HSSym{\mapsto}{}\<[34E]%
+\>[37]{}\HSVar{k}\;\HSSpecial{(}\HSVar{f}\;\HSSpecial{(}\HSSpecial{(}\HSVar{x}\HSSpecial{,}\HSVar{v}\HSSpecial{)}\HSSym{::}\HSVar{nv'}\HSSpecial{)}\HSSpecial{)}!\ \HSVar{nv}{}\<[E]%
+\\
+\>[B]{}\HSSym{\mid} {}\<[4]%
+\>[4]{}\HSSpecial{(}{\STOperation{app}}\;\HSSym{\anonymous} \;\HSSym{\anonymous} \HSSpecial{)}\;{}\<[27]%
+\>[27]{}\HSSym{\anonymous} \;{}\<[31]%
+\>[31]{}\HSSym{\anonymous} {}\<[34]%
+\>[34]{}\HSSym{\mapsto}{}\<[34E]%
+\>[37]{}\HSSpecial{\HSSym{\{\mskip1.5mu} }{\STOperation{fail}}!\ \HSSpecial{\HSSym{\mskip1.5mu\}}}{}\<[E]%
+\\
+\>[B]{}\HSSym{\mid} {}\<[4]%
+\>[4]{}\HSSpecial{(}{\STOperation{var}}\;\HSVar{x}\HSSpecial{)}\;{}\<[27]%
+\>[27]{}\HSVar{nv}\;{}\<[31]%
+\>[31]{}\HSVar{k}{}\<[34]%
+\>[34]{}\HSSym{\mapsto}{}\<[34E]%
+\>[37]{}{\HSKeyword{match}}\;\HSSpecial{(}\HSVar{lookup}\;\HSVar{x}\;\HSVar{nv}\HSSpecial{)}!\ {\HSKeyword{with}}{}\<[E]%
+\\
+\>[37]{}\HSSym{\mid} {}\<[40]%
+\>[40]{}\HSSpecial{(}{\colorbox{highlight}{\ensuremath{\mathit{Thunk}\ t}}}\HSSpecial{)}{}\<[51]%
+\>[51]{}\HSSym{\mapsto}{}\<[51E]%
+\>[54]{}\HSVar{k}\;{\colorbox{highlight}{\ensuremath{t!}}}\;\HSVar{nv}{}\<[E]%
+\\
+\>[37]{}\HSSym{\mid} {}\<[40]%
+\>[40]{}\HSVar{v}{}\<[51]%
+\>[51]{}\HSSym{\mapsto}{}\<[51E]%
+\>[54]{}\HSVar{k}\;\HSVar{v}\;\HSVar{nv}{}\<[E]%
+\\
+\>[37]{}{\HSKeyword{end}}{}\<[E]%
+\\
+\>[B]{}\HSSym{\mid} {}\<[4]%
+\>[4]{}\HSSpecial{(}{\STOperation{thunk}}\;\HSVar{f}\HSSpecial{)}\;{}\<[27]%
+\>[27]{}\HSVar{nv}\;{}\<[31]%
+\>[31]{}\HSVar{k}{}\<[34]%
+\>[34]{}\HSSym{\mapsto}{}\<[34E]%
+\>[37]{}\HSVar{k}\;\HSSpecial{(}\HSCon{Thunk}\;\HSSpecial{\HSSym{\{\mskip1.5mu} }\HSVar{f}\;\HSVar{nv}\HSSpecial{\HSSym{\mskip1.5mu\}}}\HSSpecial{)}\;\HSVar{nv}{}\<[E]%
+\\
+\>[B]{}\HSSym{\mid} {}\<[4]%
+\>[4]{}{\HSKeyword{return}}\;\HSVar{v}\;{}\<[27]%
+\>[27]{}\HSVar{nv}{}\<[34]%
+\>[34]{}\HSSym{\mapsto}{}\<[34E]%
+\>[37]{}\HSSpecial{\HSSym{\{\mskip1.5mu} }\HSVar{v}\HSSpecial{\HSSym{\mskip1.5mu\}}}{}\<[E]%
+\ColumnHook
+\end{hscode}\resethooks
+\hrule
+\caption{A Handler for the \ensuremath{\HSCon{Fun}} effect, implementing a call-by-name
+  semantics for function arguments. The gray highlights indicate where thunks
+  constructed for function arguments are forced.}
+\label{fig:handler-cbn}
+\end{figure}
+
+The handler in \cref{fig:handler-cbn} shows an implementation of a call-by-name
+semantics for the \ensuremath{\HSCon{Fun}} effect. The only case that differ from the call-by-value
+handler in \cref{fig:handler-cbv} are the \ensuremath{{\STOperation{app}}} and \ensuremath{{\STOperation{var}}} cases.
+
+In the case for \ensuremath{{\STOperation{app}}}, we now put the argument thunk in the environment
+immediately, without forcing it first. Instead, in the case for \ensuremath{{\STOperation{var}}}, we check
+if the variable we look up in the environment is a \ensuremath{\HSCon{Thunk}}. If so, we force it
+and pass the resulting value to the continuation. In effect, this means that for
+a variable that binds an effectful computation, the associated side effects take
+place every time we use that variable, but not until we reference it for the
+first time.
+
+\subsection{Example Usage}
+
+To illustrate how to use the reusable components defined in this section, and
+the difference between the semantics implemented by \ensuremath{\HSVar{hCBV}}
+(\cref{fig:handler-cbv}) and \ensuremath{\HSVar{hCBN}} (\cref{fig:handler-cbn}), we combine the
+\ensuremath{\HSCon{Lambda}} module with the modules for \ensuremath{\HSCon{Div}} and \ensuremath{\HSCon{Lit}}. \cref{fig:example} shows
+the example.
+
+When importing the modules \ensuremath{\HSCon{HLambdaCBV}} and \ensuremath{\HSCon{HLambdaCBN}}, we pass an explicit
+effect row that corresponds to the effects that remain after handling the \ensuremath{\HSCon{Fun}}
+effect. Because we handle \ensuremath{\HSCon{Fun}} after handling the \ensuremath{\HSCon{Fail}} effect introduced by
+\ensuremath{\HSCon{Div}}, we pass the empty row.  To evaluate expressions, we have to invoke
+\ensuremath{\HSVar{hFail}} twice: first to handle the instance of the \ensuremath{\HSCon{Fail}} effect introduced by
+\ensuremath{\HSVar{eval}} for the \ensuremath{\HSCon{Div}} constructor, and later to handle the \ensuremath{\HSCon{Fail}} instance
+introduced by applying \ensuremath{\HSVar{hCBV}}/\ensuremath{\HSVar{hCBN}}. Consequently, the result of evaluating is
+a nested \ensuremath{\HSCon{Maybe}}, where the inner instance indicates errors resulting from
+division by zero, and the outer instance errors thrown by the
+handler. Evaluating \ensuremath{\HSVar{result1}} and \ensuremath{\HSVar{result2}} shows the difference between using
+the call-by-value and call-by-name semantics for functions.
+
+\begin{figure}[t]
+\begin{hscode}\SaveRestoreHook
+\column{B}{@{}>{\hspre}l<{\hspost}@{}}%
+\column{3}{@{}>{\hspre}l<{\hspost}@{}}%
+\column{11}{@{}>{\hspre}c<{\hspost}@{}}%
+\column{11E}{@{}l@{}}%
+\column{14}{@{}>{\hspre}l<{\hspost}@{}}%
+\column{E}{@{}>{\hspre}l<{\hspost}@{}}%
+\>[B]{}\HSKeyword{module}\;\HSCon{Test}\;\HSKeyword{where}{}\<[E]%
+\\
+\>[B]{}\hsindent{3}{}\<[3]%
+\>[3]{}\HSKeyword{import}{}\<[11]%
+\>[11]{} {}\<[11E]%
+\>[14]{}\HSCon{Prelude}{}\<[E]%
+\\
+\>[11]{}\HSSpecial{,}{}\<[11E]%
+\>[14]{}\HSCon{Fun}{}\<[E]%
+\\
+\>[11]{}\HSSpecial{,}{}\<[11E]%
+\>[14]{}\HSCon{Fail}{}\<[E]%
+\\[\blanklineskip]%
+\>[11]{}\HSSpecial{,}{}\<[11E]%
+\>[14]{}\HSCon{HLambdaCBV}\;\HSSpecial{\HSSym{[\mskip1.5mu} }\HSSpecial{\HSSym{\mskip1.5mu]}}{}\<[E]%
+\\
+\>[11]{}\HSSpecial{,}{}\<[11E]%
+\>[14]{}\HSCon{HLambdaCBN}\;\HSSpecial{\HSSym{[\mskip1.5mu} }\HSSpecial{\HSSym{\mskip1.5mu]}}{}\<[E]%
+\\[\blanklineskip]%
+\>[11]{}\HSSpecial{,}{}\<[11E]%
+\>[14]{}\HSCon{Lambda}{}\<[E]%
+\\
+\>[11]{}\HSSpecial{,}{}\<[11E]%
+\>[14]{}\HSCon{Lit}{}\<[E]%
+\\
+\>[11]{}\HSSpecial{,}{}\<[11E]%
+\>[14]{}\HSCon{Div}{}\<[E]%
+\\[\blanklineskip]%
+\>[B]{}\hsindent{3}{}\<[3]%
+\>[3]{}{\HSKeyword{fun}}\;\HSVar{execCBV}\ \mathbf{:}\ \HSCon{Expr}\HSSym{\to} \HSCon{Maybe}\;\HSSpecial{(}\HSCon{Maybe}\;\HSCon{Value}\HSSpecial{)}\;\HSKeyword{where}{}\<[E]%
+\\
+\>[B]{}\hsindent{3}{}\<[3]%
+\>[3]{}\HSSym{\mid} \HSVar{e}\HSSym{\mapsto}\HSSpecial{(}\HSVar{hFail}\;\HSSpecial{(}\HSVar{hCBV}\;\HSSpecial{(}\HSVar{hFail}\;\HSSpecial{(}\HSVar{eval}\;\HSVar{e}\HSSpecial{)}\HSSpecial{)}\;\HSSpecial{\HSSym{[\mskip1.5mu} }\HSSpecial{\HSSym{\mskip1.5mu]}}\HSSpecial{)}\HSSpecial{)}!\ {}\<[E]%
+\\[\blanklineskip]%
+\>[B]{}\hsindent{3}{}\<[3]%
+\>[3]{}{\HSKeyword{fun}}\;\HSVar{execCBN}\ \mathbf{:}\ \HSCon{Expr}\HSSym{\to} \HSCon{Maybe}\;\HSSpecial{(}\HSCon{Maybe}\;\HSCon{Value}\HSSpecial{)}\;\HSKeyword{where}{}\<[E]%
+\\
+\>[B]{}\hsindent{3}{}\<[3]%
+\>[3]{}\HSSym{\mid} \HSVar{e}\HSSym{\mapsto}\HSSpecial{(}\HSVar{hFail}\;\HSSpecial{(}\HSVar{hCBN}\;\HSSpecial{(}\HSVar{hFail}\;\HSSpecial{(}\HSVar{eval}\;\HSVar{e}\HSSpecial{)}\HSSpecial{)}\;\HSSpecial{\HSSym{[\mskip1.5mu} }\HSSpecial{\HSSym{\mskip1.5mu]}}\HSSpecial{)}\HSSpecial{)}!\ {}\<[E]%
+\\[\blanklineskip]%
+\>[B]{}\hsindent{3}{}\<[3]%
+\>[3]{}{\HSKeyword{fun}}\;\HSVar{expr}\ \mathbf{:}\ \HSCon{Expr}\HSSym{\mathrel{=}}\HSCon{App}\;\HSSpecial{(}\HSCon{Abs}\;\HSString{``x\char34 }\;\HSSpecial{(}\HSCon{Lit}\;\HSNumeral{10}\HSSpecial{)}\HSSpecial{)}\;\HSSpecial{(}\HSCon{Div}\;\HSSpecial{(}\HSCon{Lit}\;\HSNumeral{5}\HSSpecial{)}\;\HSSpecial{(}\HSCon{Lit}\;\HSNumeral{0}\HSSpecial{)}\HSSpecial{)}{}\<[E]%
+\\[\blanklineskip]%
+\>[B]{}\hsindent{3}{}\<[3]%
+\>[3]{}\HSComment{ -\! - evaluates to Just Nothing}{}\<[E]%
+\\
+\>[B]{}\hsindent{3}{}\<[3]%
+\>[3]{}{\HSKeyword{fun}}\;\HSVar{result1}\ \mathbf{:}\ \HSCon{Maybe}\;\HSSpecial{(}\HSCon{Maybe}\;\HSCon{Value}\HSSpecial{)}\HSSym{\mathrel{=}}\HSVar{execCBV}\;\HSVar{expr}{}\<[E]%
+\\[\blanklineskip]%
+\>[B]{}\hsindent{3}{}\<[3]%
+\>[3]{}\HSComment{ -\! - evaluates to Just (Just (Num 10))}{}\<[E]%
+\\
+\>[B]{}\hsindent{3}{}\<[3]%
+\>[3]{}{\HSKeyword{fun}}\;\HSVar{result2}\ \mathbf{:}\ \HSCon{Maybe}\;\HSSpecial{(}\HSCon{Maybe}\;\HSCon{Value}\HSSpecial{)}\HSSym{\mathrel{=}}\HSVar{execCBN}\;\HSVar{expr}{}\<[E]%
+\\
+\>[B]{}{\HSKeyword{end}}{}\<[E]%
+\ColumnHook
+\end{hscode}\resethooks
+\hrule
+\caption{Examples of different outcomes when using a call-by-value or
+  call-by-name evaluation strategy.}
+\label{fig:example}
+\end{figure}
+\section{Related Work}
+
+\paragraph{Effect Semantics.}
+
+\emph{Monads}, originally introduced by Moggi~\cite{DBLP:journals/iandc/Moggi91}
+have long been the dominant approach to modelling programs with side
+effects. They are, however, famously hard to compose, leading to the development
+of \emph{monad transformers}~\cite{DBLP:conf/popl/LiangHJ95} as a technique for
+building monads from individual definitions of effects. \emph{Algebraic
+  effects}~\cite{DBLP:journals/acs/PlotkinP03} provide a more structured
+approach towards this goal, where an effect is specified in terms of the
+\emph{operations} that we can use to interact with it. The behaviour of these
+operations is governed by a set of equations that specify its
+well-behavedness. Later, Plotkin and Pretnar~\cite{DBLP:conf/esop/PlotkinP09}
+extended the approach with \emph{handlers}, which define interpretations of
+effectful operations by defining a homomorphism from a \emph{free model} that
+trivially inhabits the equational theory (i.e., syntax) to a programmer-defined
+domain, making the approach attractive for implementing effects as well. Perhaps
+the most well-known implementation of algebraic effects and handlers is the
+\emph{free monad}~\cite{DBLP:conf/icfp/KammarLO13}, and this implementation is
+often taken as the semantic foundation of languages with support for effect
+handlers. Schrijvers et al.~\cite{DBLP:conf/haskell/SchrijversPWJ19} showed that
+algebraic effects implemented using the free monad correspond to a sub-class of
+monad-transformers. The algebraic effects and handlers approach provides a solid
+formal framework for understanding effectful programs in which we intend to
+ground \strachey{}' semantics of effects and handlers.
+
+A crucial difference between \strachey{}' effects and handlers, and the original
+formulation by Plotkin and Pretnar~\cite{DBLP:conf/esop/PlotkinP09}, is the
+support for \emph{higher-order operations}. Although it is possible to implement
+such operations in algebraic effects by defining them as handlers, this breaches
+the separation between the syntax and semantics of effects that underpins
+\strachey{}' design.  \emph{Scoped Effects}~\cite{DBLP:conf/haskell/WuSH14} were
+proposed as an alternative flavor of algebraic effects that supports
+higher-order syntax, recovering a separation between the syntax semantics of
+effects for higher-order operations. In subsequent work, Pir\'og et
+al. \cite{DBLP:conf/lics/PirogSWJ18} adapted the categorical formulation of
+algebraic effects to give Scoped Effects a similar formal
+underpinning. Unfortunately, Scoped Effects is not suitable out-of-the-box as a
+model for effects and handlers in \strachey{}, because it cannot readily capture
+operations that arbitrarily postpone the execution of their higher-order
+arguments, such as \ensuremath{{\STOperation{lam}}}. \emph{Latent effects} were developed by Van den Berg
+et al. \cite{DBLP:conf/aplas/BergSPW21} as a refinement of scoped effects that
+solves this issue. Key to their approach is a \emph{latent effect functor},
+which explicitly tracks semantic residue of previously-installed handlers,
+allowing for a more fine-grained specification of the types of the computational
+arguments of operations. With Latent Effects, it is possible to capture function
+abstraction as a higher-order operation. It remains future work to formulate a
+precise model of effectful computation for \strachey{}, and to establish if and
+how \strachey{}' effect handlers correspond to Latent Effects.
+
+\paragraph{Implementations of Algebraic Effects and Handlers.}
+
+There are many languages with support for algebraic effects and
+handlers. Perhaps the most mature is Koka~\cite{DBLP:conf/popl/Leijen17}, which
+features a Hindley/Milner-style row-polymorphic type system. While we borrow
+from Frank~\cite{DBLP:journals/jfp/ConventLMM20} a
+CBPV-inspired~\cite{DBLP:books/sp/Levy2004} distinction between computations and
+values, Koka is purely call-by-value, and only functions can be
+effectful. Frank~\cite{DBLP:journals/jfp/ConventLMM20}, on the other hand, does
+maintain this distinction between values and computations. Its type system
+relies on an \emph{ambient ability} and implicit row polymorphism to approximate
+effects. Handlers are not first-class constructs in Frank. Instead, functions
+may adjust the ambient ability of their arguments by specifying the behaviour of
+operations. This provides some additional flexibility over built-in handers, for
+example by permitting \emph{multihandlers} that handle multiple effects at
+once. Both Koka and Frank lack native support for higher order effects, thus
+higher-order operations must be encoded in terms of handlers. This means that it
+is not possible to define higher order operations while maintaining the
+aforementioned distinction between the syntax and semantics of effects.
+
+Eff~\cite{DBLP:journals/jlp/BauerP15} is a functional language with support for
+algebraic effects and handlers, with the possibility to dynamically generate new
+operations and effects. In later work, Bauer and
+Pretnar~\cite{DBLP:journals/corr/BauerP13} developed a type-and-effect system
+for Eff, together with an inference
+algorithm~\cite{DBLP:journals/corr/Pretnar13}. The language
+Links~\cite{DBLP:conf/tldi/LindleyC12} employs row-typed algebraic effects in
+the context of database programming. Their system is based on System F extended
+with effect rows and row polymorphism, and limits effectful computations to
+functions similar to Koka. Importantly, their system tracks effects using
+R\'emy-style rows~\cite{DBLP:conf/popl/Remy89}, maintaining so-called
+\emph{presence types} that can additionally express an effect's absence from a
+computation. Brachth{\"{a}}user et
+al.~\cite{DBLP:journals/pacmpl/BrachthauserSO20} presented \emph{Effekt} as a
+more practical implementation of effects and handlers, using \emph{capability
+  based} type system where effect types express a set of capabilities that a
+computation requires from its context.
+
+\paragraph{Semantics of Composable Data Types and Functions.}
+
+We give a semantics to extensible data types and functions in \strachey{} using
+the initial algebra semantics~\cite{DBLP:conf/tlca/JohannG07} of an underlying
+signature functor. \emph{Data Types \`a la Carte}
+(DTC)~\cite{DBLP:journals/jfp/Swierstra08} solves the expression problem in
+Haskell by embedding this semantics into the host language. In later work,
+Bahr~\cite{DBLP:conf/icfp/Bahr14} and Bahr and
+Hvitved~\cite{DBLP:conf/icfp/BahrH11,DBLP:journals/corr/abs-1202-2917} extended
+the approach to improve its expressiveness and flexibility.
+
+DTC, like any approach that relies on initial algebra semantics, limits the
+modular definition of functions to functions that correspond to a \emph{fold}
+over the input data. While this may seem restrictive, in practice more
+complicated traversals can often be encoded as a fold, such as
+paramorphisms~\cite{DBLP:conf/fpca/MeijerFP91} or some classes of attribute
+grammars~\cite{DBLP:conf/fpca/Johnsson87}. While \strachey{} currently only has
+syntax for plain algebras and folds, we plan to extend the syntax for working
+with extensible data types and functions to accomodate a wider range of
+traversals in the future.
+
+Carette et al. \cite{DBLP:journals/jfp/CaretteKS09} showed how to define
+interpreters by encoding object language expressions as a term that represents
+their traversal. These traversals correspond to a fold, but abstract over the
+algebra that defines the computation, meaning that alternative semantics can be
+assigned to terms by picking a suitable algebra. Semantics are defined as type
+class instances in the host language, thus one can build object language terms
+in a modular way by defining multiple different type classes that correspond to
+different syntactical constructs.
+
+\paragraph{Row Types.}
+
+While a concrete design for \strachey{}' type system is still emerging, we
+anticipate that it will make heavy use of \emph{row types}, both for tracking
+effects and typing extensible types and functions. While to the best of our
+knowledge no type system exists with this combination of features, all the
+ingredients are there in the literature. Originally, row types were incepted as
+a means to model inheritance in object-oriented
+languages~\cite{DBLP:conf/lics/Wand89,DBLP:conf/popl/Remy89}, and later
+extensible records~\cite{DBLP:conf/icfp/BlumeAC06,gaster1996polymorphic}. More
+recently, they also gained popularity in the form of row-based effect systems
+with the development of languages such as Koka~\cite{DBLP:conf/popl/Leijen17}
+and Links~\cite{DBLP:conf/tldi/LindleyC12}. Their use for typing extensible
+algebraic data types and pattern matching functions is less well-studied. For
+the most part, row types in this context exist implicitly as part of encoding
+techniques such as DTC~\cite{DBLP:journals/jfp/Swierstra08}, where we can view
+the use of signature functors and functor co-products as an embedding of
+row-typed extensible variants in the host language's type system. Various
+refinements of
+DTC~\cite{DBLP:conf/haskell/Morris15,DBLP:conf/haskell/OliveiraMY15,DBLP:conf/icfp/Bahr14}
+make this connection more explicit by using type-level lists to track the
+composition of extensible data. A notable exception is the
+\textsc{Rose}~\cite{DBLP:journals/pacmpl/MorrisM19} language, which has a
+row-based type system with built-in support for extensible variants and pattern
+matching function.
+\section{Future Work}
+
+\strachey{} is an ongoing research project. Here, we briefly summarize the
+current state, and some of the challenges that still remain.
+
+While we can implement the examples from this paper in the current prototype
+implementation of \strachey{}, the language still lacks a complete
+specification.  As such, the immediate next steps are to develop specifications
+of the type system and operational semantics. This requires us to address
+several open research questions, such as giving a semantics to the flavor of
+higher-order effects used by \strachey{}, and applying row types to type
+\strachey{}' extensible data types and functions. While the \textsc{Rose}
+language supports extensible variants, this support is limited to non-recursive
+types. For \strachey{}, we would need to adapt their type sytem to support
+recursive extensible data types as well.  Designing a small core calculus into
+which \strachey{} can be translated could be potential way to explore these
+questions, making a formalization of the language in a proof assistant more
+attainable, by formalizing the core language. Further down the line, we also
+intend to explore a denotational model for effect handlers in \strachey{},
+giving the language a more solid formal foundation, similar to existing
+programming languages based on algebraic effects and handlers.
+
+In the future, we also hope to enforce stronger properties about specifications
+defined in \strachey{} through the language's type system. The prime example are
+\emph{intrinsically-typed definitional
+  interpreters}~\cite{augustsson1999exercise}, which specify a language's
+operational semantics such that it is \emph{type sound by construction}.
+
+\section{Conclusion}
+
+Reusable programming language components have the potential to significantly
+reduce the amount of time, effort, and expertise needed for developing
+programming languages. In this paper, we presented \strachey{}, a functional
+meta-language for defining reusable programming language components. \strachey{}
+enables the defintion of reusable language components using algebraic data types
+and pattern matching functions, by supporting \emph{extensible data types and
+  functions}, which are defined on a case-by-case basis. Additionally,
+\strachey{} features built-in support for \emph{effects and handlers} for
+defining the side effects of a language. The flavor of effects and handlers
+implemented by \strachey{} supports \emph{higher-order} operations, and can be
+used to define features that affect a program's control flow, such as function
+abstraction, as a reusable effect. We illustrated how these features can be used
+for developing reusable programming language components by defining a component
+for function abstraction, which can be composed with other language components
+and evaluated using both a call-by-value and call-by-name strategy.
+
+\subsubsection*{Acknowledgements.}
+
+We would like to thank Peter Mosses, for his valuable advice during several
+discussions about this work. Furthermore, we thank the anonymous reviewers for
+their reviews and helpful feedback.
+
+\bibliography{references}
+
+\end{document}
